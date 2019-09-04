@@ -88,7 +88,7 @@
            <li class="list-group-item"> <i class="glyphicon glyphicon-equalizer text-muted"></i> <span class="badge
            pull-right"><?php echo Utils::getOpenDays(); ?></span><?php _me("运行天数") ?></li>
            <li class="list-group-item"> <i class="glyphicon glyphicon-refresh text-muted"></i> <span class="badge
-           pull-right"><?php echo Utils::getLatestTime($this); ?></span><?php _me("最后更新") ?></li>
+           pull-right"><?php echo Utils::getLatestTime($this); ?></span><?php _me("最后活动") ?></li>
        </ul>
       </section>
       <?php endif; ?>
@@ -107,19 +107,36 @@
        <?php Typecho_Widget::widget('Widget_Metas_Tag_Cloud','ignoreZeroCount=1&limit=30')->to($tags); ?>
         <?php if($tags->have()): ?>
             <?php while ($tags->next()): ?>
-            <a href="<?php $tags->permalink();?>" class="label bg-info" title="<?php echo sprintf(_mt("该标签下有 %d 篇文章"),$tags->count); ?>" data-toggle="tooltip"><?php $tags->name(); ?></a>
+            <a href="<?php $tags->permalink();?>" class="label badge" title="<?php echo sprintf(_mt("该标签下有 %d 篇文章"),
+                $tags->count); ?>" data-toggle="tooltip"><?php $tags->name(); ?></a>
             <?php endwhile; ?>
         <?php endif; ?>
        </div>
       </section>
     <?php else: ?>
           <?php if (IS_TOC): ?>
+          <div id="tag_toc_body">
               <section id="tag_toc" class="widget widget_categories wrapper-md clear">
                   <h3 class="widget-title m-t-none text-md"><?php _me("文章目录") ?></h3>
                   <div class="tags l-h-2x">
                       <div id="toc"></div>
                   </div>
               </section>
+
+              <div class="hidden-lg tocify-mobile-panel panel panel-default
+              setting_body_panel"
+                   aria-hidden="true">
+                  <button class="btn btn-default no-shadow pos-abt" data-toggle="tooltip" data-placement="left" data-original-title="<?php _me("目录") ?>" data-toggle-class=".tocify-mobile-panel=active">
+                      <i class="glyphicon glyphicon-resize-full"></i>
+                  </button>
+                  <div class="panel-heading"><?php _me("文章目录") ?></div>
+                  <div class="setting_body toc-mobile-body">
+                      <div class="panel-body">
+                          <div class="tocTree"></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
           <?php else: ?>
               <section id="tag_cloud-2" class="widget widget_tag_cloud wrapper-md clear">
                   <h3 class="widget-title m-t-none text-md"><?php _me("标签云") ?></h3>
@@ -127,7 +144,7 @@
                       <?php Typecho_Widget::widget('Widget_Metas_Tag_Cloud','ignoreZeroCount=1&limit=30')->to($tags); ?>
                       <?php if($tags->have()): ?>
                           <?php while ($tags->next()): ?>
-                              <a href="<?php $tags->permalink();?>" class="label bg-info" title="<?php $tags->name(); ?>" data-toggle="tooltip"><?php $tags->name(); ?></a>
+                              <a href="<?php $tags->permalink();?>" class="label badge" title="<?php $tags->name(); ?>" data-toggle="tooltip"><?php $tags->name(); ?></a>
                           <?php endwhile; ?>
                       <?php endif; ?>
                   </div>

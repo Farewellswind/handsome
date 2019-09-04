@@ -12,7 +12,7 @@
         <!-- brand -->
         <a href="<?php $this->options->rootUrl(); ?>/" class="navbar-brand text-lt">
             <?php if ($this->options->logo!=""): ?>
-            <img src="<?php echo $this->options->logo; ?>">
+                <?php echo $this->options->logo; ?>
             <?php else: ?>
                 <?php if ($this->options->indexNameIcon == ""): ?>
                     <i class="fontello fontello-home"></i>
@@ -28,32 +28,18 @@
 
       <!-- navbar collapse（顶部导航栏） -->
     <?php echo Content::selectNavbarCollapse() ?>
-        <!-- buttons -->
-        <div class="nav navbar-nav hidden-xs">
-          <a href="#" class="btn no-shadow navbar-btn" ui-toggle-class="app-aside-folded" target=".app">
-            <i class="fontello fontello-dedent text icon-fw"></i>
-            <i class="fontello fontello-indent icon-fw text-active"></i>
-          </a>
-          <a href="#" class="btn no-shadow navbar-btn" ui-toggle-class="show" target="#aside-user">
-            <i class="iconfont icon-user icon-fw"></i>
-          </a>
-        </div>
-        <!-- / buttons -->
-
 
         <!-- search form -->
-        <form id="searchform" class="navbar-form navbar-form-sm navbar-left shift" method="post" role="search">
+        <form id="searchform1" class="searchform navbar-form navbar-form-sm navbar-left shift" method="post"
+              role="search">
           <div class="form-group">
             <div class="input-group rounded bg-light">
-              <input id="search_input" type="search" name="s" class="transparent rounded form-control input-sm no-border padder" required placeholder="<?php _me("输入关键词搜索…") ?>">
+              <input autocomplete="off" id="search_input" type="search" name="s" class="transparent rounded form-control input-sm no-border padder" required placeholder="<?php _me("输入关键词搜索…") ?>">
                 <!--搜索提示-->
-                <!--<ul class="dropdown-menu" style="display: block; top: 30px; left: 0px;">
-                    <li tabindex="0" style="">
-                        <a>友人C</a>
-                    </li>
-                </ul>-->
+                <ul id="search_tips_drop" class="dropdown-menu hide" style="display: block;top: 30px; left: 0px;">
+                </ul>
               <span id="search_submit" class="transparent input-group-btn">
-                  <button  type="submit" class="transparent btn btn-sm"><i class="fontello fontello-search"></i></button>
+                  <button  type="submit" class="transparent btn btn-sm"><i class="fontello fontello-search" id="icon-search"></i><i class="animate-spin  fontello fontello-spinner hide" id="spin-search"></i></button>
               </span>
             </div>
           </div>
@@ -106,7 +92,16 @@
               <span class="visible-xs-inline">
               <?php _me("闲言碎语") ?>
               </span>
-              <span class="badge badge-sm up bg-danger pull-right-xs"></span>
+              <span class="badge badge-sm up bg-danger pull-right-xs"><?php
+                  $read_id = Typecho_Cookie::get('user_read_id');
+                  $latest_time_id = Typecho_Cookie::get('latest_time_id');
+                  if (!empty($read_id) && !empty($latest_time_id)){
+                      $not_read = $latest_time_id - $read_id;
+                      if ($not_read > 0){
+                          _me("新");
+                      }
+                  }
+                  ?></span>
             </a>
             <!-- dropdown -->
             <div class="dropdown-menu w-xl animated fadeInUp">
@@ -118,7 +113,6 @@
                 </div>
                 <div class="list-group" id="smallRecording">
                   <?php
-                  //$comments->listComments();
                   $slug = "cross";    //页面缩略名
                   $limit = 3;    //调用数量
                   $length = 140;    //截取长度
@@ -129,7 +123,6 @@
                   $options = $this->options;    //Typecho_Widget::widget('Widget_Options');
 
                   $page = $db->fetchRow($db->select()->from('table.contents')
-                      ->where('table.contents.status = ?', 'publish')
                       ->where('table.contents.created < ?', $options->gmtTime)
                       ->where('table.contents.slug = ?', $slug));
 
@@ -146,14 +139,22 @@
                           ->where('table.comments.cid ' . $isGuestbook . ' ?', $page['cid'])
                           ->order('table.comments.created', Typecho_Db::SORT_DESC)
                           ->limit($limit));
-                      //Regex.Replace();
+                      $index = 0;
                       foreach ($comments AS $comment) {
+                          if ($index == 0){
+                              Typecho_Cookie::set('latest_time_id', $comment['coid']);
+                          }
+                          $index ++;
                           $content = Content::postCommentContent(Markdown::convert($comment['text']),$this->user->hasLogin(),"","","");
-                         $content = trim(strip_tags($content));
-                       echo '<a href="'.$this->options->rootUrl.'/index.php/cross.html" class="list-group-item"><span class="clear block m-b-none words_contents">'.Content::returnExceptShortCodeContent($content).'<br><small class="text-muted">'.date('Y-n-j H:i:s',$comment['created']+($this->options->timezone - idate("Z"))).'</small></span></a>';
+                         $content = Content::returnExceptShortCodeContent(trim(strip_tags($content)));
+                         if ($content == ""){
+                             $content = _mt("点击查看详情");
+                         }
+
+                       echo '<a href="'.BLOG_URL_PHP.'cross.html" class="list-group-item"><span class="clear block m-b-none words_contents">'.Content::excerpt($content,200).'<br><small class="text-muted">'.date('Y-n-j H:i:s',$comment['created']+($this->options->timezone - idate("Z"))).'</small></span></a>';
                       }
                   } else {
-                      echo '<a href="'.$this->options->rootUrl.'/cross.html" class="list-group-item"><span class="clear block m-b-none">这是一条默认的说说，如果你看到这条动态，请去后台新建独立页面，地址填写cross,自定义模板选择时光机。具体说明请参见主题的使用攻略。<br><small class="text-muted">'.date("F jS, Y \a\t h:i a",time()+($this->options->timezone - idate("Z"))).'</small></span></a>';
+                      echo '<a href="'.BLOG_URL_PHP.'/cross.html" class="list-group-item"><span class="clear block m-b-none">这是一条默认的说说，如果你看到这条动态，请去后台新建独立页面，地址填写cross,自定义模板选择时光机。具体说明请参见主题的使用攻略。<br><small class="text-muted">'.date("F jS, Y \a\t h:i a",time()+($this->options->timezone - idate("Z"))).'</small></span></a>';
                   }?>
                 </div>
               </div>
@@ -223,7 +224,7 @@
             </ul>
             <!-- / dropdown(已经登录) -->
           <?php else: ?>
-          <div class="dropdown-menu w-lg wrapper bg-white animated shake" aria-labelledby="navbar-login-dropdown">
+          <div class="dropdown-menu w-lg wrapper bg-white animated fadeIn" aria-labelledby="navbar-login-dropdown">
             <form id="Login_form" action="<?php $this->options->loginAction();?>" method="post">
               <div class="form-group">
                 <label for="navbar-login-user"><?php _me("用户名") ?></label>

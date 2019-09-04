@@ -8,14 +8,12 @@ if (strtoupper(Handsome_Config::PHP_ERROR_DISPLAY) == 'ON'){
 }
 
 if (strtoupper(Handsome_Config::HANDSOME_DEBUG_DISPLAY) == 'ON'){
-    if (!defined(__TYPECHO_DEBUG__)){
+    if (!defined('__TYPECHO_DEBUG__')){
         @define('__TYPECHO_DEBUG__', true);
     }
 }else{
     @define('__TYPECHO_DEBUG__', null);
 }
-
-
 ?>
 <!DOCTYPE HTML>
 <!--suppress ALL -->
@@ -49,7 +47,7 @@ if (strtoupper(Handsome_Config::HANDSOME_DEBUG_DISPLAY) == 'ON'){
     <?php endif; ?>
     <!-- 第三方CDN加载CSS -->
     <?php $PUBLIC_CDN_ARRAY = unserialize(PUBLIC_CDN); ?>
-    <link href="<?php echo $PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
+    <link href="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
 
 
     <!-- 本地css静态资源 -->
@@ -64,7 +62,8 @@ if (strtoupper(Handsome_Config::HANDSOME_DEBUG_DISPLAY) == 'ON'){
         $code = $this->options->codeStyle;
     }else{
         $code = "vs";
-    } ?>
+    }
+    ?>
     <?php if ($this->options->themetype == 0 || $this->options->themetype == 2 || $this->options->themetype == 4 || $this->options->themetype == 7 || $this->options->themetype == 11): ?><link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/features/newblack.min.css?v=<?php echo Handsome::$version.Handsome::$versionTag ?>" type="text/css" />
     <?php endif; ?>
     <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/features/code/<?php echo $code ?>.min.css?v=<?php echo Handsome::$version.Handsome::$versionTag ?>" type="text/css" />
@@ -86,7 +85,8 @@ if (strtoupper(Handsome_Config::HANDSOME_DEBUG_DISPLAY) == 'ON'){
 
     <!--引入英文字体文件-->
     <?php if (!empty($this->options->featuresetup) && in_array('laodthefont', $this->options->featuresetup)): ?>
-    <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.css?v=<?php echo Handsome::$version.Handsome::$versionTag ?>" type="text/css" />
+    <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.min.css?v=<?php echo Handsome::$version
+        .Handsome::$versionTag ?>" type="text/css" />
     <?php endif; ?>
 
     <style type="text/css">
@@ -94,7 +94,7 @@ if (strtoupper(Handsome_Config::HANDSOME_DEBUG_DISPLAY) == 'ON'){
     </style>
 
     <!--全站jquery-->
-    <script src="<?php echo $PUBLIC_CDN_ARRAY['js']['jquery'] ?>"></script>
+    <script src="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['js']['jquery'] ?>"></script>
 
     <!--网站统计代码-->
     <?php $this->options->analysis(); ?>

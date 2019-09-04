@@ -1,4 +1,36 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+
+<?php
+$content = $this->getDescription();
+$content = json_decode($content,true);
+
+$password = Typecho_Cookie::get('category_'.$this->getArchiveSlug());
+
+$cookie = false;//true为可以直接进入
+if (!empty($password) && $password == md5(@$content['password'])){
+    $cookie = true;
+}
+
+
+if (is_array($content) && @$content['lock'] == true && !$cookie)
+    :?>
+
+<?php
+
+$data = array();
+$data['title'] = $this->getArchiveTitle();
+$data['md5'] = md5($content['password']);
+$data['type'] = "category";
+$data['category'] = $this->getArchiveSlug();
+$data['img'] = @$content['img'];
+
+
+$_GET['data']=$data;
+require_once('libs/Lock.php'); ?>
+
+<?php else: ?>
+
+
 <?php $this->need('component/header.php'); ?>
 
     <!-- aside -->
@@ -21,9 +53,6 @@
             <?php Content::BreadcrumbNavigation($this, $this->options->rootUrl); ?>
        <?php if ($this->have()): ?>
             <!-- 输出文章 TODO:整合该部分代码-->
-           <?php
-
-           ?>
            <?php Content::echoPostList($this) ?>
        <?php else: ?>
             <p class="m-b-md no_search_result panel"> <?php _me("没有找到搜索结果，请尝试更换关键词。") ?> </p>
@@ -49,3 +78,4 @@
     <!-- footer -->
     <?php $this->need('component/footer.php'); ?>
     <!-- / footer -->
+<?php endif; ?>

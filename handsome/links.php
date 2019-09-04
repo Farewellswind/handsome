@@ -16,78 +16,73 @@ $this->need('component/header.php');
 	<!-- / aside -->
 
 <!-- <div id="content" class="app-content"> -->
-  	<main class="app-content-body links_page <?php echo Content::returnPageAnimateClass($this); ?>">
-        <div class="hbox hbox-auto-xs hbox-auto-sm">
-
-            <div class="link-tab-container tab-container">
-                <ul class="nav nav-tabs nav-justified">
-                    <li class="active">
-                        <a href="#my-info" role="tab" data-toggle="tab" aria-expanded="true"><?php _me("本博信息") ?></a>
-                    </li>
-                    <li>
-                        <a href="#links-inside" role="tab" data-toggle="tab" aria-expanded="false"><?php _me("内页链接") ?></a>
-                    </li>
-                    <li>
-                        <a href="#links-allweb" role="tab" data-toggle="tab"><?php _me("全站链接") ?></a>
-                    </li>
-                    <li>
-                        <a href="#links-goodweb" role="tab" data-toggle="tab"><?php _me("推荐链接") ?></a>
-                    </li>
+    <main class="app-content-body <?php Content::returnPageAnimateClass($this); ?>">
+    <div class="hbox hbox-auto-xs hbox-auto-sm">
+        <div class="bg-light lter b-b wrapper-md">
+            <h1 class="m-n font-thin h3"><i class="iconfont icon-links i-sm m-r-sm"></i><?php _me("友情链接") ?></h1>
+            <div class="entry-meta text-muted  m-b-none small post-head-icon"><?php echo $this->fields->intro; ?></div>
+        </div>
+        <div class="wrapper-md">
+            <div class="tab-container">
+                <ul class="nav nav-tabs">
+                    <li class="active"><a href data-toggle="tab" data-target="#my-info"><?php _me("申请友链") ?></a></li>
+                    <li class=""><a href data-toggle="tab" data-target="#tab_2"><?php _me("内页链接") ?></a></li>
+                    <li class=""><a href data-toggle="tab" data-target="#tab_3"><?php _me("推荐链接") ?></a></li>
+                    <li class=""><a href data-toggle="tab" data-target="#tab_4"><?php _me("全站链接") ?></a></li>
                 </ul>
                 <div class="tab-content">
                     <!-- list -->
-                    <div id="my-info" role="tabpane1" class="tab-pane fade in active">
+                    <div id="my-info" class="tab-pane fade in active">
                         <div class="wrapper ng-binding">
-                            <?php $this->content(); ?>
+                            <?php echo Content::postContent($this,$this->user->hasLogin()); ?>
                             <!--评论-->
                             <?php $this->need('component/comments.php') ?>
                         </div>
                     </div>
-                    <!--内页链接-->
-                    <ul id="links-inside" role="tabpane2" class="fade tab-pane list-group list-group-lg no-radius m-b-none m-t-n-xxs link-main">
-                        <?php
-                        $x=0;
-                        $go = _mt("去找TA玩");
-                        $mypattern = <<<eof
-<div class="item">
-   <div class="link-bg" style="background-image: url({image})">
-    <div class="bg" style="background-image: url({image})"></div>
-    <div class="link-avatar">
-     <img src="{image}" class="avatar avatar-80" height="80" width="80" />
-    </div>
-   </div>
-   <div class="meta">
-    <button class="btn m-b-xs btn-dark btn-rounded"><a href="{url}" target="_blank">{$go}</a></button>
-   </div>
-   <div class="info">
-    <h3 class="name">{name}</h3>
-    <div class="description">
-     {title}
-    </div>
-   </div>
-  </div>
+
+                    <div class="tab-pane fade in" id="tab_2">
+                        <div class="list-group list-group-lg list-group-sp">
+                            <?php
+                            $mypattern = <<<eof
+  <a href="{url}" target="_blank" class="list-group-item"> <span class="pull-left thumb-sm avatar m-r"> <img src={image} alt="{title}" /> <i class="{color} right"></i> </span> <span class="clear"> <span>{name}</span> <small class="text-muted clear text-ellipsis">{title}</small> </span> </a>
 eof;
-                        Links_Plugin::output($mypattern, 0, "one");
-                        ?>
-                    </ul>
-                    <!--全站链接-->
-                    <ul id="links-allweb" role="tabpane3" class="fade tab-pane list-group list-group-lg no-radius m-b-none m-t-n-xxs link-main">
-                        <?php Links_Plugin::output($mypattern, 0, "ten");?>
-                    </ul>
-                    <!--建议网站-->
-                    <ul id="links-goodweb" role="tabpane4" class="fade tab-pane list-group list-group-lg no-radius m-b-none m-t-n-xxs link-main">
-                        <?php Links_Plugin::output($mypattern, 0, "good");?>
-                    </ul>
+                            Links_Plugin::output($mypattern, 0, "one");
+                            ?>
+                        </div>
+                    </div>
 
-                    <!-- / list -->
+                    <div class="tab-pane fade in" id="tab_3">
+                        <div class="list-group list-group-lg list-group-sp">
+                            <?php
+                            $mypattern = <<<eof
+                            
+  <a href="{url}" target="_blank" class="list-group-item"> <span class="pull-left thumb-sm avatar m-r"> <img 
+  src={image} alt="{title}" /> <i class="{color} right"></i> </span> <span class="clear"> <span class="text-muted">{name}</span> <small class="text-muted clear text-ellipsis">{title}</small> </span> </a>
+eof;
+                            Links_Plugin::output($mypattern, 0, "good");
+                            ?>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade in" id="tab_4">
+                        <div class="list-group list-group-lg list-group-sp">
+                            <?php
+                            $mypattern = <<<eof
+                            
+  <a href="{url}" target="_blank" class="list-group-item"> <span class="pull-left thumb-sm avatar m-r"> <img src={image} alt="{title}" /> <i class="{color} right"></i> </span> <span class="clear"> <span class="text-muted">{name}</span> <small class="text-muted clear text-ellipsis">{title}</small> </span> </a>
+eof;
+                            Links_Plugin::output($mypattern, 0, "ten");
+                            ?>
+                        </div>
+                    </div>
                 </div>
-
             </div>
-            <!--文章右侧边栏开始-->
-            <?php //$this->need('component/sidebar.php'); ?>
-            <!--文章右侧边栏结束-->
         </div>
-	</main>
+        <!--首页右侧栏-->
+        <?php $this->need('component/sidebar.php') ?>
+    </div>
+    <!-- /content -->
+</main>
     <!-- footer -->
 	<?php $this->need('component/footer.php'); ?>
   	<!-- / footer -->

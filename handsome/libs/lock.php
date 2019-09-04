@@ -23,33 +23,45 @@ require_once("Content.php");
 require_once("Utils.php");
 require_once("Config.php");
 
-switch ($options->publicCDNSelcet){
-    case 0:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$BOOT_CDN));
-        break;
-    case 1:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$BAIDU_CDN));
-        break;
-    case 2:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$SINA_CDN));
-        break;
-    case 3:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$QINIU_CDN));
-        break;
-    case 4:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$JSDELIVR_CDN));
-        break;
-    case 5:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$CAT_CDN));
-        break;
-    default:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$SINA_CDN));
-        break;
-}
-
 if (!defined('THEME_URL')){//主题目录的绝对地址
     define("THEME_URL", rtrim(preg_replace('/^'.preg_quote($options->siteUrl, '/').'/', $options->rootUrl.'/', $options->themeUrl, 1),'/').'/');
 }
+
+switch ($options->publicCDNSelcet){
+    case 0:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$BOOT_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 1:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$BAIDU_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 2:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$SINA_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 3:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$QINIU_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 4:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$JSDELIVR_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 5:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$CAT_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 6:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$LOCAL_CDN));
+        @define('PUBLIC_CDN_PREFIX',THEME_URL."assets/libs/");
+        break;
+    default:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$LOCAL_CDN));
+        @define('PUBLIC_CDN_PREFIX',THEME_URL."assets/libs/");
+        break;
+}
+
 
 if (strlen(trim($options->LocalResourceSrc)) > 0){//主题静态资源的绝对地址
     @define('STATIC_PATH',$options->LocalResourceSrc);
@@ -90,7 +102,7 @@ if (!defined("BLOG_URL")){
 
     <!-- 第三方CDN加载CSS -->
     <?php $PUBLIC_CDN_ARRAY = unserialize(PUBLIC_CDN); ?>
-    <link href="<?php echo $PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
+    <link href="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
 
 
     <!-- 本地css静态资源 -->
@@ -101,7 +113,8 @@ if (!defined("BLOG_URL")){
 
     <!--引入英文字体文件-->
     <?php if (!empty($this->options->featuresetup) && in_array('laodthefont', $this->options->featuresetup)): ?>
-        <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.css?v=<?php echo Handsome::$version.Handsome::$versionTag ?>" type="text/css" />
+        <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.min.css?v=<?php echo Handsome::$version
+            .Handsome::$versionTag ?>" type="text/css" />
     <?php endif; ?>
 
     <style type="text/css">
@@ -109,7 +122,7 @@ if (!defined("BLOG_URL")){
     </style>
 
     <!--全站jquery-->
-    <script src="<?php echo $PUBLIC_CDN_ARRAY['js']['jquery'] ?>"></script>
+    <script src="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['js']['jquery'] ?>"></script>
 
     <!--网站统计代码-->
     <script type="text/javascript">
@@ -125,12 +138,29 @@ if (!defined("BLOG_URL")){
 
 
     <div class="modal-over bg-black">
-        <div class="modal-center animated fadeInUp text-center" style="width:200px;margin:-100px 0 0 -100px;">
+        <div class="modal-center animated fadeInUp text-center" style="width:200px;margin:-200px 0 0 -100px;">
             <div class="thumb-lg">
-                <img src="<?php $options->BlogPic(); ?>" class="img-circle">
+                <img src="<?php
+                if (trim(@$_GET['data']['img'] == "")){
+                    $options->BlogPic();
+                }else{
+                    echo $_GET['data']['img'];
+                }
+                ?>" class="img-circle">
             </div>
-            <h4 class="m-t m-b"><?php $this->options->BlogName(); ?></h4>
-            <div class="input-group">
+            <h4 class="m-t m-b"><?php echo $_GET['data']['title']; ?></h4>
+            <small class="text-muted letterspacing indexWords m-b-sm">
+                <?php
+                _me("请输入");
+                if ($_GET['data']['type'] == "index"){
+                    echo "首页";
+                }else{
+                    echo "分类「".$_GET['data']['title']."」";
+                }
+                _me("访问密码：");
+                ?>
+            </small>
+            <div class="input-group m-t-md">
                 <input type="password" class="form-control text-sm btn-rounded no-border open_new_world_password" placeholder="输入密码打开新世界">
                 <span class="input-group-btn">
         <a class="btn btn-success btn-rounded no-border wrapper-sm padder-md open_new_world"><i class="glyphicon
@@ -149,11 +179,16 @@ if (!defined("BLOG_URL")){
     window['LocalConst'] = {
         OPERATION_NOTICE: '<?php _me("操作通知") ?>',
         BLOG_URL: '<?php echo BLOG_URL; ?>',
+        MD5: '<?php echo $_GET['data']['md5']?>',
+        TYPE: '<?php echo $_GET['data']['type'] ?>',
+        CATEGORY: '<?php echo $_GET['data']['category'] ?>'
+
     };
 
     $('.open_new_world').click(function () {
         var ele = $(this);
-        $.get(LocalConst.BLOG_URL,{action:"open_world", password:$('.open_new_world_password').val()})
+        $.get(LocalConst.BLOG_URL,{action:"open_world", password:$('.open_new_world_password').val(), md5:LocalConst
+                .MD5,type: LocalConst.TYPE, category: LocalConst.CATEGORY})
             .error(function(){
                 $.message({
                     title:LocalConst.OPERATION_NOTICE,
@@ -187,7 +222,7 @@ if (!defined("BLOG_URL")){
                 });
             }
         });
-    })
+    });
 
     function sleep(d) {
         var t = Date.now();

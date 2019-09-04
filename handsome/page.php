@@ -24,16 +24,9 @@
          <!--文章内容-->
          <div id="post-content" class="wrapper-lg">
           <div class="entry-content l-h-2x">
-              <?php Content::postContent($this,$this->user->hasLogin()); ?>
+              <?php echo Content::postContent($this,$this->user->hasLogin()); ?>
           </div>
-             <?php if ($this->options->adContentPage != ""): ?>
-                 <!--独立页面页脚的广告位-->
-                 <?php $this->options->adContentPage(); ?>
-             <?php endif; ?>
-             <?php if (!empty($this->options->featuresetup) && in_array('payforauthorinpage', $this->options->featuresetup)): ?>
-                 <!--打赏模块-->
-                 <?php echo Content::exportPayForAuthors(); ?>
-             <?php endif; ?>
+             <?php Content::pageFooter($this->options) ?>
          </div>
         </article>
        </div>

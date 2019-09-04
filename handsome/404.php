@@ -14,27 +14,43 @@ require_once("libs/Content.php");
 require_once("libs/Utils.php");
 require_once("libs/Config.php");
 
+if (!defined('THEME_URL')){//主题目录的绝对地址
+    define("THEME_URL", rtrim(preg_replace('/^'.preg_quote($options->siteUrl, '/').'/', $options->rootUrl.'/', $options->themeUrl, 1),'/').'/');
+}
+
 switch ($options->publicCDNSelcet){
     case 0:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$BOOT_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
         break;
     case 1:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$BAIDU_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
         break;
     case 2:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$SINA_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
         break;
     case 3:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$QINIU_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
         break;
     case 4:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$JSDELIVR_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
         break;
     case 5:
         @define('PUBLIC_CDN',serialize(Handsome_Config::$CAT_CDN));
+        @define('PUBLIC_CDN_PREFIX',"");
+        break;
+    case 6:
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$LOCAL_CDN));
+        @define('PUBLIC_CDN_PREFIX',THEME_URL."assets/libs/");
+
         break;
     default:
-        @define('PUBLIC_CDN',serialize(Handsome_Config::$SINA_CDN));
+        @define('PUBLIC_CDN',serialize(Handsome_Config::$LOCAL_CDN));
+        @define('PUBLIC_CDN_PREFIX',THEME_URL."assets/libs/");
         break;
 }
 
@@ -76,7 +92,7 @@ if (strlen(trim($options->LocalResourceSrc)) > 0){//主题静态资源的绝对�
 
     <!-- 第三方CDN加载CSS -->
     <?php $PUBLIC_CDN_ARRAY = unserialize(PUBLIC_CDN); ?>
-    <link href="<?php echo $PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
+    <link href="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['css']['bootstrap'] ?>" rel="stylesheet">
 
 
     <!-- 本地css静态资源 -->
@@ -87,7 +103,8 @@ if (strlen(trim($options->LocalResourceSrc)) > 0){//主题静态资源的绝对�
 
     <!--引入英文字体文件-->
     <?php if (!empty($this->options->featuresetup) && in_array('laodthefont', $this->options->featuresetup)): ?>
-        <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.css?v=<?php echo Handsome::$version.Handsome::$versionTag ?>" type="text/css" />
+        <link rel="stylesheet" href="<?php echo STATIC_PATH; ?>css/font.min.css?v=<?php echo Handsome::$version
+            .Handsome::$versionTag ?>" type="text/css" />
     <?php endif; ?>
 
     <style type="text/css">

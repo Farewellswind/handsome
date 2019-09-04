@@ -1,12 +1,50 @@
-<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+?>
+
+<?php
+$content = @$this->stack[0]['categories'][0]['description'];
+$content = json_decode($content,true);
+
+$password = Typecho_Cookie::get('category_'.@$this->stack[0]['categories'][0]['slug']);
+
+$cookie = false;//true为可以直接进入
+if (!empty($password) && $password == md5(@$content['password'])){
+    $cookie = true;
+}
+
+
+if (is_array($content) && @$content['lock'] == true && !$cookie)
+:?>
+
+    <?php
+
+    $data = array();
+    $data['title'] = $this->stack[0]['categories'][0]['name'];
+    $data['md5'] = md5($content['password']);
+    $data['type'] = "category";
+    $data['category'] = $this->stack[0]['categories'][0]['slug'];
+    $data['img'] = @$content['img'];
+
+    $_GET['data']=$data;
+    require_once('libs/Lock.php'); ?>
+
+<?php else: ?>
+
+
 <?php $this->need('component/header.php'); ?>
 	<!-- aside -->
 	<?php $this->need('component/aside.php'); ?>
 	<!-- / aside -->
-
+<?php if (trim($this->options->postFontSize)!==""): ?>
+<style>
+    #post-content{
+        font-size: <?php echo $this->options->postFontSize."px"; ?>;
+    }
+</style>
+<?php endif; ?>
 <!-- <div id="content" class="app-content"> -->
    <a class="off-screen-toggle hide"></a>
-   <main class="app-content-body <?php echo Content::returnPageAnimateClass($this); ?>">
+   <main class="app-content-body <?php Content::returnPageAnimateClass($this); ?>">
     <div class="hbox hbox-auto-xs hbox-auto-sm">
     <!--文章-->
      <div class="col center-part">
@@ -31,8 +69,9 @@
              <?php if($this->options->commentChoice =='0'): ?>
                  <!--评论数-->
                  <li class="meta-comments"><i class="iconfont icon-comments-o" aria-hidden="true"></i>&nbsp;<a
-                             class="meta-value" href="#comments">&nbsp;<?php $this->commentsNum(_mt('暂无评论'), _mt('1 条评论'), _mt('%d 条评论')); ?></a></li>
+                             class="meta-value" href="#comments">&nbsp;<?php if ($this->allowComment == 1)$this->commentsNum(_mt('暂无评论'), _mt('1 条评论'), _mt('%d 条评论'));else _me("关闭评论") ;?></a></li>
              <?php endif; ?>
+
              <!--文字数目-->
              <li class="meta-word"><i class="fontello fontello-pencil"></i>&nbsp;<span class="meta-value"><?php echo Utils::getWordsOfContentPost($this->text); ?>&nbsp;<?php _me('字数'); ?></span></li>
              <!--分类-->
@@ -49,9 +88,7 @@
          <!--文章内容-->
          <div id="post-content" class="wrapper-lg">
           <div class="entry-content l-h-2x">
-          <?php
-
-          Content::postContent($this,$this->user->hasLogin());
+          <?php echo Content::postContent($this,$this->user->hasLogin());
           ?>
           </div>
              <?php if ($this->options->adContentPost != ""): ?>
@@ -88,6 +125,28 @@
     </div>
    </main>
 
-    <!-- footer -->
+
+    <?php echo Content::returnReadModeContent($this,$this->user->hasLogin()); ?>
+
+    <script>
+        try {
+            $("[data-morphing]").fancyMorph({
+                hash : 'morphing'
+            });
+        }catch (e){
+
+        }
+
+    </script>
+<!-- footer -->
 	<?php $this->need('component/footer.php'); ?>
   	<!-- / footer -->
+
+    <script>
+        $("[data-morphing]").fancyMorph({
+            hash : 'morphing'
+        });
+    </script>
+<?php endif; ?>
+
+

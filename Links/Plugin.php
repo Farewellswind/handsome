@@ -1,44 +1,13 @@
 <?php
 /**
- * 友情链接插件
- * 
+ * <strong style="color:red;">handsomePro 唯一配套插件</strong>
+ *
  * @package Links
- * @author Hanny
- * @version 1.1.2
+ * @author hewro,hanny
+ * @version 2.0.0
  * @dependence 14.10.10-*
- * @link http://www.imhan.com
+ * @link https://www.ihewro.com
  *
- * 历史版本
- * version 1.1.1 at 2014-12-14
- * 修改支持Typecho 1.0
- * 修正Typecho 1.0下不能删除的BUG
- *
- * version 1.1.0 at 2013-12-08
- * 修改支持Typecho 0.9
-
- * version 1.0.4 at 2010-06-30
- * 修正数据表的前缀问题
- * 在Pattern里加上所有的数据表字段
- 
- * version 1.0.3 at 2010-06-20
- * 修改图片链接的支持方式。
- * 增加链接分类功能
- * 增加自定义字段，以便用户自定义扩展
- * 增加多种链接输出方式。
- * 增加较详细的帮助文档
- * 增加在自定义页面引用标签，方便友情链接页面的引用
- *
- * version 1.0.2 at 2010-05-16
- * 增加SQLite支持
- *
- * version 1.0.1 at 2009-12-27
- * 增加显示链接描述
- * 增加首页链接数量限制功能
- * 增加图片链接功能
-
- * version 1.0.0 at 2009-12-12
- * 实现友情链接的基本功能
- * 包括: 添加 删除 修改 排序
  */
 class Links_Plugin implements Typecho_Plugin_Interface
 {
@@ -57,7 +26,17 @@ class Links_Plugin implements Typecho_Plugin_Interface
         Typecho_Plugin::factory('Widget_Abstract_Contents')->contentEx = array('Links_Plugin', 'parse');
         Typecho_Plugin::factory('Widget_Abstract_Contents')->excerptEx = array('Links_Plugin', 'parse');
         Typecho_Plugin::factory('Widget_Abstract_Comments')->contentEx = array('Links_Plugin', 'parse');
-		return _t($info);
+
+        //置顶功能
+        Typecho_Plugin::factory('Widget_Archive')->indexHandle = array('Links_Plugin', 'sticky');
+        //分类过滤，默认过滤相册
+        Typecho_Plugin::factory('Widget_Archive')->indexHandle = array('Links_Plugin', 'CateFilter');
+
+        //过滤私密评论
+        Typecho_Plugin::factory('Widget_Abstract_Contents')->excerptEx = array('Links_Plugin','exceptFeed');
+        Typecho_Plugin::factory('Widget_Abstract_Contents')->contentEx = array('Links_Plugin','exceptFeed');
+
+        return _t($info);
     }
     
     /**
@@ -81,7 +60,29 @@ class Links_Plugin implements Typecho_Plugin_Interface
      * @param Typecho_Widget_Helper_Form $form 配置面板
      * @return void
      */
-    public static function config(Typecho_Widget_Helper_Form $form) {}
+    public static function config(Typecho_Widget_Helper_Form $form) {
+
+
+        $thanks = new Typecho_Widget_Helper_Form_Element_Select("thanks",array(
+            1 => "友情链接功能由<a href='http://www.imhan.com'>hanny</a>开发，感谢！"
+        ),"1","友情链接","<strong style='color: red'> 请在typecho的后台-管理-友情链接 设置</strong>");
+        $form->addInput($thanks);
+
+        $sticky_cids = new Typecho_Widget_Helper_Form_Element_Text(
+            'sticky_cids', NULL, '',
+            '置顶文章的 cid', '按照排序输入, 请以半角逗号或空格分隔 cid.</br><strong style=\'color: red\'>cid查看方式：</strong>后台的文章管理中，进入具体的文章编辑页面，地址栏中会有该数字。如<code>http://localhost/build/admin/write-post.php?cid=120</code>表示该篇文章的cid为120');
+        $form->addInput($sticky_cids);
+
+        $CateId = new Typecho_Widget_Helper_Form_Element_Text('CateId', NULL, '', _t('首页不显示的分类的mid'), _t('多个请用英文逗号隔开</br><strong style="color: red">mid查看方式：</strong> 在分类管理页面点击分类，地址栏中会有该数字，比如<code>http://localhost/build
+/admin/category.php?mid=2</code> 表示该分类的mid为2</br><strong style="color: rgba(255,0,18,1)">默认不过滤相册分类，请自行过滤</strong>'));
+        $form->addInput($CateId);
+
+        $LockId = new Typecho_Widget_Helper_Form_Element_Text('LockId', NULL, '', _t('加密分类mid'), _t('多个请用英文逗号隔开</br><strong style="color: red">mid查看方式：</strong> 在分类管理页面点击分类，地址栏中会有该数字，比如<code>http://localhost/build
+/admin/category.php?mid=2</code> 表示该分类的mid为2</br><strong style="color: rgba(255,0,18,1)">加密分类的密码需要在分类描述按照指定格式填写<a 
+href="https://handsome.ihewro.com/#/lock" target="_blank">使用文档</a></strong></br><strong style="color: rgba(255,0,18,1)">加密分类仍然会在首页显示标题列表，但不会显示具体内容，也不会出现在rss地址中</strong>'));
+        $form->addInput($LockId);
+
+    }
     
     /**
      * 个人用户的配置面板
@@ -171,9 +172,15 @@ class Links_Plugin implements Typecho_Plugin_Interface
 		/** 链接地址 */
 		$url = new Typecho_Widget_Helper_Form_Element_Text('url', NULL, "http://", _t('链接地址*'));
 		$form->addInput($url);
-		
-		/** 链接分类 */
-		$sort = new Typecho_Widget_Helper_Form_Element_Text('sort', NULL, NULL, _t('链接分类'), _t('建议以英文字母开头，只包含字母与数字'));
+
+        $sort = new Typecho_Widget_Helper_Form_Element_Select('sort', array(
+            'ten'=>'全站链接，首页左侧边栏显示',
+            'one'=>'内页链接，在独立页面中显示（需要新建独立页面<a href="https://handsome2.ihewro.com/#/plugin" target="_blank">友情链接</a>）',
+            'good'=>'推荐链接，在独立页面中显示',
+            'others' => '失效链接，不会在任何位置输出，用于标注暂时失效的友链'
+        ),'ten', _t('链接输出位置*'), '选择友情链接输出的位置');
+
+
 		$form->addInput($sort);
 		
 		/** 链接图片 */
@@ -181,12 +188,8 @@ class Links_Plugin implements Typecho_Plugin_Interface
 		$form->addInput($image);
 		
 		/** 链接描述 */
-		$description =  new Typecho_Widget_Helper_Form_Element_Textarea('description', NULL, NULL, _t('链接描述'));
+		$description =  new Typecho_Widget_Helper_Form_Element_Textarea('description', NULL, NULL, _t('链接描述'),"链接的一句话简单介绍");
 		$form->addInput($description);
-		
-		/** 自定义数据 */
-		$user = new Typecho_Widget_Helper_Form_Element_Text('user', NULL, NULL, _t('自定义数据'), _t('该项用于用户自定义数据扩展'));
-		$form->addInput($user);
 		
 		/** 链接动作 */
 		$do = new Typecho_Widget_Helper_Form_Element_Hidden('do');
@@ -216,7 +219,7 @@ class Links_Plugin implements Typecho_Plugin_Interface
             $sort->value($link['sort']);
             $image->value($link['image']);
             $description->value($link['description']);
-            $user->value($link['user']);
+//            $user->value($link['user']);
             $do->value('update');
             $lid->value($link['lid']);
             $submit->value(_t('编辑链接'));
@@ -287,13 +290,20 @@ class Links_Plugin implements Typecho_Plugin_Interface
 		}
 		$links = $db->fetchAll($sql);
 		$str = "";
-		foreach ($links as $link) {
+        $color = array("bg-danger","bg-info","bg-warning");
+        $echoCount = 0;
+        foreach ($links as $link) {
 			if ($link['image'] == NULL) {
 				$link['image'] = $nopic_url;
 			}
-			$str .= str_replace(
-				array('{lid}', '{name}', '{url}', '{sort}', '{title}', '{description}', '{image}', '{user}'),
-				array($link['lid'], $link['name'], $link['url'], $link['sort'], $link['description'], $link['description'], $link['image'], $link['user']),
+            $specialColor = $specialColor = $color[$echoCount %3];
+            $echoCount ++ ;
+            if ($link['description'] == ""){
+                $link['description'] = "一个神秘的人";
+            }
+            $str .= str_replace(
+				array('{lid}', '{name}', '{url}', '{sort}', '{title}', '{description}', '{image}', '{user}','{color}'),
+				array($link['lid'], $link['name'], $link['url'], $link['sort'], $link['description'], $link['description'], $link['image'], $link['user'],$specialColor),
 				$pattern
 			);
 		}
@@ -331,5 +341,92 @@ class Links_Plugin implements Typecho_Plugin_Interface
         } else {
             return $text;
         }
+    }
+
+
+    /**
+     * 选取置顶文章
+     *
+     * @access public
+     * @param object $archive , $select
+     * @param $select
+     * @return void
+     * @throws Typecho_Db_Exception
+     * @throws Typecho_Exception
+     */
+    public static function sticky($archive, $select)
+    {
+        $config  = Typecho_Widget::widget('Widget_Options')->plugin('Links');
+        $sticky_cids = $config->sticky_cids ? explode(',', strtr($config->sticky_cids, ' ', ',')) : '';
+        if (!$sticky_cids) return;
+
+        $db = Typecho_Db::get();
+        $paded = $archive->request->get('page', 1);
+        $sticky_html = '<span class="label text-sm bg-danger pull-left m-t-xs m-r" style="margin-top:  2px;">'._t("置顶").'</span>';
+
+        foreach($sticky_cids as $cid) {
+            if ($cid && $sticky_post = $db->fetchRow($archive->select()->where('cid = ?', $cid))) {
+                if ($paded == 1) {                               // 首頁 page.1 才會有置頂文章
+                    $sticky_post['sticky'] = $sticky_html;
+                    $archive->push($sticky_post);                  // 選取置頂的文章先壓入
+                }
+                $select->where('table.contents.cid != ?', $cid); // 使文章不重覆
+            }
+        }
+    }
+
+    public static function CateFilter($archive, $select){
+        if('/feed' == strtolower(Typecho_Router::getPathInfo()) || '/feed/' == strtolower(Typecho_Router::getPathInfo())){//加密分类的文章不显示在分类中
+            $LockIds = Typecho_Widget::widget('Widget_Options')->plugin('Links')->LockId;
+            if(!$LockIds) return $select;       //没有写入值，则直接返回
+            $select = $select->select('table.contents.cid', 'table.contents.title', 'table.contents.slug', 'table.contents.created', 'table.contents.authorId','table.contents.modified', 'table.contents.type', 'table.contents.status', 'table.contents.text', 'table.contents.commentsNum', 'table.contents.order','table.contents.template', 'table.contents.password', 'table.contents.allowComment', 'table.contents.allowPing', 'table.contents.allowFeed','table.contents.parent')->join('table.relationships','table.relationships.cid = table.contents.cid','right')->join('table.metas','table.relationships.mid = table.metas.mid','right')->where('table.metas.type=?','category');
+            $LockIds = explode(',', $LockIds);
+            $LockIds = array_unique($LockIds);  //去除重复值
+            foreach ($LockIds as $k => $v) {
+                $select = $select->where('table.relationships.mid != '.intval($v))->group('cid');//确保每个值都是数字；排除重复文章，由qqdie修复
+            }
+            return $select;
+        }else{
+            $CateIds = Typecho_Widget::widget('Widget_Options')->plugin('Links')->CateId;
+            if(!$CateIds) return $select;       //没有写入值，则直接返回
+            $select = $select->select('table.contents.cid', 'table.contents.title', 'table.contents.slug', 'table.contents.created', 'table.contents.authorId','table.contents.modified', 'table.contents.type', 'table.contents.status', 'table.contents.text', 'table.contents.commentsNum', 'table.contents.order','table.contents.template', 'table.contents.password', 'table.contents.allowComment', 'table.contents.allowPing', 'table.contents.allowFeed','table.contents.parent')->join('table.relationships','table.relationships.cid = table.contents.cid','right')->join('table.metas','table.relationships.mid = table.metas.mid','right')->where('table.metas.type=?','category');
+            $CateIds = explode(',', $CateIds);
+            $CateIds = array_unique($CateIds);  //去除重复值
+            foreach ($CateIds as $k => $v) {
+                $select = $select->where('table.relationships.mid != '.intval($v))->group('cid');//确保每个值都是数字；排除重复文章，由qqdie修复
+            }
+            return $select;
+        }
+    }
+
+    /**
+     * 为feed过滤掉加密的分类内容
+     * @param $archive
+     * @param $select
+     * @return mixed
+     */
+    public static function CateFilterForFeed($archive, $select){
+        if('/feed' != strtolower(Typecho_Router::getPathInfo()) && '/feed/' != strtolower
+            (Typecho_Router::getPathInfo())) return $select;//
+
+        $CateIds = Typecho_Widget::widget('Widget_Options')->plugin('Links')->LockId;
+        if(!$CateIds) return $select;       //没有写入值，则直接返回
+        $select = $select->select('table.contents.cid', 'table.contents.title', 'table.contents.slug', 'table.contents.created', 'table.contents.authorId','table.contents.modified', 'table.contents.type', 'table.contents.status', 'table.contents.text', 'table.contents.commentsNum', 'table.contents.order','table.contents.template', 'table.contents.password', 'table.contents.allowComment', 'table.contents.allowPing', 'table.contents.allowFeed','table.contents.parent')->join('table.relationships','table.relationships.cid = table.contents.cid','right')->join('table.metas','table.relationships.mid = table.metas.mid','right')->where('table.metas.type=?','category');
+        $CateIds = explode(',', $CateIds);
+        $CateIds = array_unique($CateIds);  //去除重复值
+        foreach ($CateIds as $k => $v) {
+            $select = $select->where('table.relationships.mid != '.intval($v))->group('cid');//确保每个值都是数字；排除重复文章，由qqdie修复
+        }
+        return $select;
+    }
+
+    public static function exceptFeed($con,$obj,$text)
+    {
+        $text = empty($text)?$con:$text;
+        if(!$obj->is('single')){
+            $text = preg_replace("/\[login\](.*?)\[\/login\]/sm",'',$text);
+            $text = preg_replace("/\[hide\](.*?)\[\/hide\]/sm",'',$text);
+        }
+        return $text;
     }
 }

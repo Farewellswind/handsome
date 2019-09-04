@@ -13,7 +13,6 @@ class Content{
     /**
      * 输出文章摘要
      * @param $content
-     * @param string $thumbStyle
      * @param $limit 字数限制
      * @return string
      */
@@ -23,10 +22,12 @@ class Content{
             return "";
         }else{
             $content = self::returnExceptShortCodeContent($content);
-            return Typecho_Common::subStr(strip_tags($content), 0, $limit, "...");
+            if (trim($content) == ""){
+                return _mt("暂时无可提供的摘要");
+            }else{
+                return Typecho_Common::subStr(strip_tags($content), 0, $limit, "...");
+            }
         }
-
-
     }
 
     public static function returnExceptShortCodeContent($content){
@@ -147,19 +148,22 @@ class Content{
         $html .=  '
         <header id="small_widgets" class="bg-light lter b-b wrapper-md">
              <h1 class="entry-title m-n font-thin h3 text-black l-h">'.$archive->title;
-            $html .= '<a class="plus-font-size" data-toggle="tooltip" data-original-title="点击改变文章字体大小"><i class="glyphicon glyphicon-text-size
+            $html .= '<a class="plus-font-size" data-toggle="tooltip" data-original-title="'._mt("点击改变文章字体大小").'"><i class="glyphicon glyphicon-text-size
 " aria-hidden="true"></i></a>';
              if ($isLogin) {
                  if ($archive->is("page")) {
                      $html .= '
-                     <a class="superscript" href="'.Helper::options()->adminUrl.'write-page.php?cid='.$archive->cid.'" target="_blank"><i class="fontello fontello-edit" aria-hidden="true"></i></a>
+                     <a class="m-l-sm superscript" href="'.Helper::options()->adminUrl.'write-page.php?cid='.$archive->cid.'" target="_blank"><i class="fontello fontello-edit" aria-hidden="true"></i></a>
                      ';
                  }else {
                      $html .= '
-                     <a class="superscript" href="'.Helper::options()->adminUrl.'write-post.php?cid='.$archive->cid.'" target="_blank"><i class="fontello fontello-edit" aria-hidden="true"></i></a>
+                     <a class="m-l-sm superscript" href="'.Helper::options()->adminUrl.'write-post.php?cid='.$archive->cid.'" target="_blank"><i class="fontello fontello-edit" aria-hidden="true"></i></a>
                      ';
                  }
              }
+
+             $html.='<a data-morphing="" id="morphing" data-src="#morphing-content" href="javascript:;" class="read_mode superscript m-l-sm" 
+data-toggle="tooltip" data-placement="right" data-original-title="'._mt("阅读模式").'"><i class="glyphicon glyphicon-eye-open" aria-hidden="true"></i></a>';
              if ($archive ->is("page")) {
                  $html .= '</h1></header>';
              }else {
@@ -219,6 +223,17 @@ class Content{
         return $html;
     }
 
+    public static function exportMobileBackground(){
+        $html = "";
+        $options = mget();
+        if ($options->BGtype == 0) {
+            $html .= 'background: '.$options->bgcolor_mobile.'';
+        }elseif ($options->BGtype == 1) {
+            $html .= 'background: url('.$options->bgcolor_mobile.') center center no-repeat no-repeat fixed #6A6B6F;background-size: cover;';
+        }
+        return $html;
+    }
+
 
     /**
      * 选择背景样式css： 纯色背景 + 图片背景 + 渐变背景
@@ -230,7 +245,7 @@ class Content{
         if ($options->BGtype == 0) {
             $html .= 'background: '.$options->bgcolor.'';
         }elseif ($options->BGtype == 1) {
-            $html .= 'background: url('.$options->bgcolor.') #6A6B6F fixed;background-size: cover';
+            $html .= 'background: url('.$options->bgcolor.') center center no-repeat no-repeat fixed #6A6B6F;background-size: cover;';
         }elseif ($options->BGtype == 2) {
             switch ($options->GradientType) {
                 case 0: $html .= <<<EOF
@@ -417,7 +432,7 @@ break;
      */
     public static function exportHtmlTag($options){
         $html = '<html class="no-js';
-        if (@in_array('container-box', $options)){
+        if (@in_array('container-box', $options) || @in_array('opacityMode', $options)){
             $html .= ' bg';
         }
         if (@in_array("opacityMode",$options)){
@@ -442,6 +457,17 @@ break;
         .cool-transparent .off-screen+* .app-content-body {
         '.Content::exportBackground().'
         }';
+        $css .= '
+@media (max-width:767px){
+    html.bg {
+        '.Content::exportMobileBackground().'
+        }
+        .cool-transparent .off-screen+* .app-content-body {
+        '.Content::exportMobileBackground().'
+        }
+}
+';
+
         $options = mget();
 
         $css .= $options->customCss;
@@ -456,11 +482,17 @@ break;
      */
     public static function exportPayForAuthors(){
         $options = mget();
+        $payTips = "";
+        if ($options->payTips == ""){
+            $payTips = _mt("如果觉得我的文章对你有用，请随意赞赏");
+        }else{
+            $payTips = $options->payTips;
+        }
         return '
              <div class="support-author">
                  <button data-toggle="modal" data-target="#myModal" class="btn btn-pay btn-danger btn-rounded"><i class="fontello fontello-wallet" aria-hidden="true"></i>&nbsp;'._mt("赞赏").'</button>
                  <div class="mt20 text-center article__reward-info">
-                     <span class="mr10">'._mt("如果觉得我的文章对你有用，请随意赞赏").'</span>
+                     <span class="mr10">'.$payTips.'</span>
                  </div>
              </div>
              <div id="myModal" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel">
@@ -567,44 +599,75 @@ break;
     /**
      * 处理显示是否有图片地址的逻辑：根据thumb字段和后台外观设置的是否开启头图开关
      * @param $widget
-     * @param $select
-     * @param int $index
+     * @param string $select 判断是首页还是文章页面的头图，因为文章页面头图一定是大头图的
+     * @param int $index 序号
+     * @param $flag true 表示一定会返回图片，不受设置影响，相册列表页面会使用
      * @return string
      */
-    public static function returnHeaderImgSrc($widget,$select,$index=0){
+    public static function returnHeaderImgSrc($widget,$select,$index=0,$flag=false){
         $options = mget();
-        $thumbField = $widget->fields->thumb;
-        if (strtoupper($thumbField) == "NO"){//thumb 为no 直接不显示头图
-            $imgSrc = "";
-        }else{//thumb不为no
+        $thumbChoice = $widget->fields->thumbChoice;
+        $thumb = $widget->fields->thumb;
+        if ($thumb == "no"){
+            $thumbChoice = "no";
+        }
+        $imgSrc = "";
+
+        $thumbSelect = 0;//0不显示，1全显示，2只显示首页，3只显示文字页面,-1表示不管什么情况都返回头图地址
+        if ($thumbChoice == "no"){
+            $thumbSelect = 0;
+        }else if ($thumbChoice == "yes"){
+            $thumbSelect = 1;
+        }else if ($thumbChoice == "yes_only_index"){
+            $thumbSelect = 2;
+        }else if ($thumbChoice == "yes_only_post"){
+            $thumbSelect = 3;
+        }else if ($thumbChoice == "default" || $thumbChoice == ""){
             if (in_array('NoRandomPic-post',$options->indexsetup) && in_array('NoRandomPic-index',
-                    $options->indexsetup)){//全部关闭
-                if ($thumbField != ""){
+                    $options->indexsetup) && $flag == false){//全部关闭
+                $thumbSelect = 0;
+            }else if ((!in_array('NoRandomPic-post',$options->indexsetup) && !in_array('NoRandomPic-index',
+                    $options->indexsetup))) {//全部开启
+                $thumbSelect = 1;
+            }else{//一开一闭
+                if ($flag == false) {//听从设置
+                    if (in_array('NoRandomPic-post',$options->indexsetup)){//不显示文章头图，显示首页头图
+                        $thumbSelect = 2;
+                    }else{//不显示首页头图，显示文章页面头图
+                        $thumbSelect = 3;
+                    }
+                }else{//强制返回
+                    $thumbSelect = -1;
+                }
+            }
+        }
+        switch ($thumbSelect){
+            case -1:
+                $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
+                break;
+            case 0://全部关闭
+                break;
+            case 1://全部开启
+                $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
+                break;
+            case 2://不显示文章头图，显示首页头图
+                if ($select == "post"){
+                    $imgSrc = "";
+                }else{
+                    $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
+                }
+                break;
+            case 3://不显示首页头图，显示文章页面头图
+                if ($select == "post"){
                     $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
                 }else{
                     $imgSrc = "";
                 }
-            }else if (!in_array('NoRandomPic-post',$options->indexsetup) && !in_array('NoRandomPic-index',
-                    $options->indexsetup)){//全部开启
-                $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
-            }else{//一开一闭
-                if (in_array('NoRandomPic-post',$options->indexsetup)){//不显示文章头图，显示首页头图
-                    if ($select == "post"){
-                        $imgSrc = "";
-                    }else{
-                        $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
-                    }
-                }else{//不显示首页头图，显示文章页面头图
-                    if ($select == "post"){
-                        $imgSrc = Content::whenSwitchHeaderImgSrc($index,$options->RandomPicChoice,$widget->attachments(1)->attachment, $widget->content, $widget->fields->thumb);
-                    }else{
-                        $imgSrc = "";
-                    }
-                }
-            }
+                break;
         }
         return $imgSrc;
     }
+
 
     public static function returnSharePostDiv($obj){
         $headImg = Content::returnHeaderImgSrc($obj,"post",0);
@@ -627,7 +690,11 @@ break;
         $day = date('d',$obj->date->timeStamp);
         $notice = _mt("扫描右侧二维码阅读全文");
         $image = THEME_URL.'libs/GetCode.php?type=url&content='.$url;
-        return <<<EOF
+        $options = mget();
+        //如果开启了开关才需要生成，否则返回空
+        if (@in_array("sreenshot",$options->featuresetup) && $obj->is("post")) {
+
+            return <<<EOF
         <style>
         
         .mdx-si-head .cover{
@@ -642,8 +709,28 @@ class="mdx-si-sum">{$expert}</div><div class="mdx-si-box"><span>{$notice}</span>
 src="{$image}"></div></div><div class="mdx-si-time">{$day}<br><span 
 class="mdx-si-time-2">{$year}</span></div></div>
 EOF;
+        }else{
+            return "";
+        }
     }
 
+
+    public static function returnReadModeContent($obj,$status){
+        $html = "";
+        $author = $obj->author->screenName;
+        $time = date("Y 年 M 月 D 日");
+        $content = Content::postContent($obj,$status);
+        $html .= <<<EOF
+<div id="morphing-content" class="hidden read_mode_article">
+        <div class="page">
+            <h1 class="title">$obj->title</h1>
+            <div class="metadata singleline"><a href="#" rel="author" class="byline">{$author}</a>&nbsp;•&nbsp;<span class="delimiter"></span><time class="date">{$time}</time></div>
+            {$content}
+        </div>
+    </div>
+EOF;
+        return $html;
+    }
 
     /**
      * 判断是否是相册分类
@@ -697,74 +784,87 @@ EOF;
         echo '<div class="blog-post">';
 
         while ($obj->next()){
-            /*if (self::isImageCategory($obj->categories)){
-                //echo "good";
-            }else{*/
-                $parameterArray = array();
-                $parameterArray['title'] = $obj->sticky.$obj->title;
+            $parameterArray = array();
+            $parameterArray['title'] = $obj->sticky.$obj->title;
 
-                //是否是大版式头图
-                $styleThumb = strtoupper($obj->fields->thumbStyle);
-                if ($styleThumb == 'SMALL'){//文章页面选择小版式
+            //是否是大版式头图
+            $styleThumb = strtoupper($obj->fields->thumbStyle);
+            if ($styleThumb == 'SMALL'){//文章页面选择小版式
+                $parameterArray['isBig'] = false;
+            }elseif ($styleThumb == 'LARGE'){
+                $parameterArray['isBig'] = true;
+            }else{//跟随外观设置
+                if ($options->thumbStyle == "0"){//小头图
                     $parameterArray['isBig'] = false;
-                }elseif ($styleThumb == 'LARGE'){
-                    $parameterArray['isBig'] = true;
-                }else{//跟随外观设置
-                    if ($options->thumbStyle == "0"){//小头图
-                        $parameterArray['isBig'] = false;
-                    }else if ($options->thumbStyle == "2"){//交错显示
-                        if ($index %2 == 0){
-                            $parameterArray['isBig'] = true;
-                        }else{
-                            $parameterArray['isBig'] = false;
-                        }
-                    }else if ($options->thumbStyle == "1"){//大头图
+                }else if ($options->thumbStyle == "2"){//交错显示
+                    if ($index %2 == 0){
                         $parameterArray['isBig'] = true;
-                    }else{//默认是大图
-                        $parameterArray['isBig'] = true;
-                    }
-                }
-
-                if (in_array('NoSummary-index', $options->indexsetup)){
-                    $expertNum = 0;
-                }else{
-                    if (!$parameterArray['isBig']){//小头图
-                        if ($options->numberOfSmallPic == ""){//自定义摘要字数
-                            $expertNum = 80;
-                        }else{
-                            $expertNum = $options->numberOfSmallPic;
-                        }
                     }else{
-                        if ($options->numberOfBigPic == ""){//自定义摘要字数
-                            $expertNum = 200;
-                        }else{
-                            $expertNum = $options->numberOfBigPic;
-                        }
+                        $parameterArray['isBig'] = false;
+                    }
+                }else if ($options->thumbStyle == "1"){//大头图
+                    $parameterArray['isBig'] = true;
+                }else{//默认是大图
+                    $parameterArray['isBig'] = true;
+                }
+            }
+
+            if (in_array('NoSummary-index', $options->indexsetup)){
+                $expertNum = 0;
+            }else{
+                if (!$parameterArray['isBig']){//小头图
+                    if ($options->numberOfSmallPic == ""){//自定义摘要字数
+                        $expertNum = 80;
+                    }else{
+                        $expertNum = $options->numberOfSmallPic;
+                    }
+                }else{
+                    if ($options->numberOfBigPic == ""){//自定义摘要字数
+                        $expertNum = 200;
+                    }else{
+                        $expertNum = $options->numberOfBigPic;
                     }
                 }
-                $parameterArray['summary'] = Content::excerpt($obj->excerpt,$expertNum);
-                $parameterArray['imgSrc'] = Content::returnHeaderImgSrc($obj,"index",$index);
-                $parameterArray['linkUrl'] = $obj->permalink;
-                /*if (index == 0){
-                    print_r($obj->author);
-                }*/
-                $parameterArray['author'] = $obj->author->screenName;
-                $parameterArray['authorUrl'] = $obj->author->permalink;
-                $parameterArray['date'] = $obj->date->timeStamp;
-                $parameterArray['commentNum'] =  $obj->commentsNum;
-                $parameterArray['viewNum'] = get_post_view($obj);
-                //是否是首页
-                $parameterArray['isIndex'] = true;
+            }
+            if (trim($obj->fields->customSummary) != ""){
+                $obj->excerpt = $obj->fields->customSummary;
+            }
+            $content = $obj->stack[$index]['categories'][0]['description'];
+            $content = json_decode($content,true);
 
-                //是否固定图片大小（默认8：3）
-                if (in_array('FixedImageSize', $options->featuresetup)){
-                    $parameterArray['isFixedImg'] = true;
-                }else{
-                    $parameterArray['isFixedImg'] = false;
-                }
-                echo Content::returnPostItem($parameterArray);
-                $index ++;
-            //}
+            if (is_array($content) && @$content['lock'] == true){//加密分类
+                $parameterArray['summary'] = Content::excerpt("",$expertNum);
+            }else{
+                $parameterArray['summary'] = Content::excerpt($obj->excerpt,$expertNum);
+            }
+            $parameterArray['imgSrc'] = Content::returnHeaderImgSrc($obj,"index",$index);
+
+            $parameterArray['linkUrl'] = $obj->permalink;
+            /*if (index == 0){
+                print_r($obj->author);
+            }*/
+            $parameterArray['author'] = $obj->author->screenName;
+            $parameterArray['authorUrl'] = $obj->author->permalink;
+            $parameterArray['date'] = $obj->date->timeStamp;
+            $parameterArray['commentNum'] =  $obj->commentsNum;
+            $parameterArray['viewNum'] = get_post_view($obj);
+            //是否是首页
+            $parameterArray['isIndex'] = true;
+
+            //是否固定图片大小（默认8：3）
+            if (in_array('FixedImageSize', $options->featuresetup)){
+                $parameterArray['isFixedImg'] = true;
+            }else{
+                $parameterArray['isFixedImg'] = false;
+            }
+
+            $parameterArray["smallThumbField"] = $obj->fields->thumbSmall;
+            $parameterArray["nothumbStyle"] = $obj->fields->noThumbInfoStyle;
+            $parameterArray["allowComment"] = $obj->allowComment;
+
+
+            echo Content::returnPostItem($parameterArray);
+            $index ++;
         }
         echo '</div>';
     }
@@ -786,7 +886,7 @@ EOF;
      * @internal param bool $isIndex : 是否是首页
      * @internal param bool $isFixedImg : 是否固定图片大小（默认8：3）
      */
-    public static function returnPostItem($parameterArray){
+    public static function   returnPostItem($parameterArray){
         $options = mget();
 
         if ($parameterArray['isIndex']){
@@ -795,10 +895,14 @@ EOF;
                 $dateString = date(I18n::dateFormat(),$parameterArray['date']);
             }
             //格式化评论数
-            if ($parameterArray['commentNum'] == 0){
-                $commentNumString = _mt("暂无评论");
+            if ($parameterArray['allowComment'] == 1){
+                if ($parameterArray['commentNum'] == 0){
+                    $commentNumString = _mt("暂无评论");
+                }else{
+                    $commentNumString = $parameterArray['commentNum']." "._mt("条评论");
+                }
             }else{
-                $commentNumString = $parameterArray['commentNum']." "._mt("条评论");
+                $commentNumString = _mt("关闭评论");
             }
             //格式化浏览次数
             $viewNumString = $parameterArray['viewNum']." "._mt("次浏览");
@@ -808,9 +912,6 @@ EOF;
         //首页文章
         if ($parameterArray['isIndex']){//首页界面的文章item结构
             //头图部分
-            /*if (in_array('multiStyleThumb',$options->indexsetup)){
-                $html .='<div class="col-sm-6 multi-post">';
-            }*/
             if ($parameterArray['imgSrc'] == ""){//图片地址为空即不显示头图
                 $html .= '<div class="panel">';
             }else{
@@ -828,13 +929,16 @@ EOF;
     </div>
 EOF;
                     }else{//头图没有裁剪
-                        $imageHtml = Utils::returnImageLazyLoadHtml($parameterArray['imgSrc'],1200,0);
+                        $imageHtml = Utils::returnImageLazyLoadHtml(false,$parameterArray['imgSrc'],1200,0);
                         $html .= <<<EOF
 <div class="panel"><div class="index-post-img"><a href="{$parameterArray['linkUrl']}"><img {$imageHtml} 
 class="img-full lazy" /></a></div>
 EOF;
                     }
                 }else{//小版式头图
+                    if (trim($parameterArray['smallThumbField']) !== ""){//小头图专用字段
+                        $parameterArray['imgSrc'] = $parameterArray['smallThumbField'];
+                    }
                     $backgroundImageHtml = Utils::returnDivLazyLoadHtml($parameterArray['imgSrc'],500,0);
                     $html .= <<<EOF
 <div class="panel-small">
@@ -849,7 +953,16 @@ EOF;
             //标题部分
             $html .= <<<EOF
 <div class="post-meta wrapper-lg">
-    <h2 class="m-t-none index-post-title"><a href="{$parameterArray['linkUrl']}">{$parameterArray['title']}</a></h2>
+EOF;
+            //个性化徽标
+            if($parameterArray['imgSrc'] == "" && $parameterArray['nothumbStyle'] != "default"  && $parameterArray['nothumbStyle'] != ""){ //无头图且显示个性化徽标
+                $style = $parameterArray['nothumbStyle'];
+                $html .= <<<EOF
+<div class="item-meta-ico bg-ico-$style"></div>
+EOF;
+            }
+            $html .= <<<EOF
+    <h2 class="m-t-none text-ellipsis index-post-title"><a href="{$parameterArray['linkUrl']}">{$parameterArray['title']}</a></h2>
 EOF;
             //if (!in_array('multiStyleThumb',$options->indexsetup)){
                 //摘要部分
@@ -860,14 +973,14 @@ EOF;
             //页脚部分，显示评论数、作者等信息
             $html .= <<<EOF
 <div class="line line-lg b-b b-light"></div>
-<div class="text-muted post-item-foot-icon">
+<div class="text-muted post-item-foot-icon text-ellipsis">
 <i class="fontello fontello-user text-muted"></i><span class="m-r-sm">&nbsp;<a href="{$parameterArray['authorUrl']}">{$parameterArray['author']}&nbsp;</a></span>
 
 <i class="fontello fontello-clock-o text-muted"></i><span class="m-r-sm">&nbsp;{$dateString}</span>
 EOF;
             if ($options->commentChoice == '0'){
                 $html .= <<<EOF
-<a href="{$parameterArray['linkUrl']}#comments" class="m-l-sm"><i class="iconfont icon-comments-o text-muted"></i>&nbsp;{$commentNumString}</a>
+<a href="{$parameterArray['linkUrl']}#comments" class="m-l-sm post-item-comment"><i class="iconfont icon-comments-o text-muted"></i>&nbsp;{$commentNumString}</a>
 EOF;
             }else{
                 $html .= <<<EOF
@@ -881,9 +994,6 @@ EOF;
 </div><!--panel/panel-small-->
 
 EOF;
-            /*if (in_array('multiStyleThumb',$options->indexsetup)){
-                $html .='</div>';//<!--分栏 col-sm-6-->
-            }*/
 
         }else{//文章页面的item结构，只有头图，没有其他的了
             if ($parameterArray['imgSrc'] != ""){
@@ -891,7 +1001,7 @@ EOF;
                     $html .= '<div class="entry-thumbnail" aria-hidden="true"><div class="item-thumb lazy" '.Utils::returnDivLazyLoadHtml($parameterArray['imgSrc'],1200,0) .'></div></div>';
                 }else{
                     $html .= '<div class="entry-thumbnail" aria-hidden="true"><img width="100%" height="auto" '
-                        .Utils::returnImageLazyLoadHtml($parameterArray['imgSrc'],1200,0).' 
+                        .Utils::returnImageLazyLoadHtml(false,$parameterArray['imgSrc'],1200,0).' 
  class="img-responsive lazy" /></div>';
                 }
             }
@@ -927,6 +1037,33 @@ EOF;
         }
     }
 
+    /**
+     * 浏览器顶部标题
+     * @param $obj
+     * @param $title
+     * @param $currentPage
+     * @return string
+     */
+    public static function returnTitle($obj,$title,$currentPage){
+        $options = mget();
+        $returnTitle="";
+        if($currentPage>1){
+            $returnTitle.= '第'.$currentPage.'页 - ';
+        }
+        $obj->archiveTitle(array(
+            'category'  =>  _mt('分类 %s 下的文章'),
+            'search'    =>  _mt('包含关键字 %s 的文章'),
+            'tag'       =>  _mt('标签 %s 下的文章'),
+            'author'    =>  _mt('%s 发布的文章')
+        ), '', ' - ');
+        $returnTitle.= $title;
+
+        $titleIntro = $options->titleintro;
+        if ($obj->is('index') && $titleIntro != "") {
+            $returnTitle.= ' - '.$options->titleintro.'';
+        }
+        return $returnTitle;
+    }
 
     /**
      * 短代码解析正则替换回调函数
@@ -955,6 +1092,27 @@ EOF;
                 $type = "share";break;
         }
         return '<div class="tip inlineBlock '.$type.'">'.$matches[5].'</div>';
+    }
+
+    /**
+     * 文章内相册解析
+     * @param $matches
+     * @return bool|string
+     */
+    public static function scodeAlbumParseCallback($matches){
+        // 不解析类似 [[player]] 双重括号的代码
+        if ( $matches[1] == '[' && $matches[6] == ']' ) {
+            return substr($matches[0], 1, -1);
+        }
+
+        //[scode type="share"]这是灰色的短代码框，常用来引用资料什么的[/scode]
+        $attr = htmlspecialchars_decode($matches[3]);//还原转义前的参数列表
+        $attrs = self::shortcode_parse_atts($attr);//获取短代码的参数
+
+//        $attrs['des'];//相册描述
+        $content = $matches[5];
+        return Content::parseContentToImage($content);
+
     }
 
     /**
@@ -1025,7 +1183,8 @@ EOF;
 
         return <<<EOF
 <div class="panel b-a">
-        <div class="panel-heading b-b b-light">{$title}
+        <div class="panel-heading b-b b-light" data-toggle="collapse" data-target="#{$id}" 
+          aria-expanded="true">{$title}
           <button class="btn btn-default btn-xs pull-right" data-toggle="collapse" data-target="#{$id}" 
           aria-expanded="true">{$notice}</button>
         </div>
@@ -1089,8 +1248,8 @@ EOF;
 <input type="hidden" name="tips" value="'.@$attrs['author'].'" >
 <audio title="" tips="" class="WeChatAudio" preload="none"><source src="" type="audio/mpeg"></audio><div class="db audio_area"><div 
 class="'.$size.'"><div class="audio_play_area"><i class="icon_audio_default"></i><i 
-class="icon_audio_playing"></i></div><div class="audio_length tips_global">00:00</div><div 
-class="db audio_info_area"><strong class="db audio_title">加载中……</strong><span class="audio_source tips_global">请稍等……
+class="icon_audio_playing"></i></div><div class="audio_length">00:00</div><div 
+class="db audio_info_area"><strong class="db audio_title">加载中……</strong><span class="audio_source">请稍等……
 </span><div class="progress_bar_bg"><div class="progress_bar" style="width: 0%;"></div></div></div></div></div></div>';
         return $playCode;
 
@@ -1157,49 +1316,59 @@ class="db audio_info_area"><strong class="db audio_title">加载中……</stron
         $targetUrl = "";//链接
         $targetSummary ="";//简介文字
         $targetImgSrc = "";//封面图片地址
-        if ($cid !== "" && $cid != null){
+        if (!empty($cid)){
             $db = Typecho_Db::get();
             $prefix = $db->getPrefix();
-            $sticky_posts = $db->fetchAll($db
+            $posts = $db->fetchAll($db
                 ->select()->from($prefix.'contents')
                 ->orWhere('cid = ?',$cid)
                 ->where('type = ? AND status = ? AND password IS NULL', 'post', 'publish'));
             //这里需要对id正确性进行一个判断，避免查找文章失败
-            if (count($sticky_posts) == 0)
-                return "";
-            $result = Typecho_Widget::widget('Widget_Abstract_Contents')->push($sticky_posts[0]);
-            if ($cover == ""){
-                $thumbArray =  $db->fetchAll($db
-                    ->select()->from($prefix.'fields')
-                    ->orWhere('cid = ?',$cid)
-                    ->where('name = ? ', 'thumb'));
-                $targetImgSrc = Content:: whenSwitchHeaderImgSrc(0,2,null,$result['text'],@$thumbArray[0]['str_value']);
+            if (count($posts) == 0){
+                $targetTitle = "文章不存在，或文章是加密、私密文章";
             }else{
-                $targetImgSrc = $cover;
+                $result = Typecho_Widget::widget('Widget_Abstract_Contents')->push($posts[0]);
+                if ($cover == ""){
+                    $thumbArray =  $db->fetchAll($db
+                        ->select()->from($prefix.'fields')
+                        ->orWhere('cid = ?',$cid)
+                        ->where('name = ? ', 'thumb'));
+                    $targetImgSrc = Content:: whenSwitchHeaderImgSrc(0,2,null,$result['text'],@$thumbArray[0]['str_value']);
+                }else{
+                    $targetImgSrc = $cover;
+                }
+                $targetSummary = Content::excerpt(Markdown::convert($result['text']),60);
+                $targetTitle = $result['title'];
+                $targetUrl = $result['permalink'];
             }
-            $targetSummary = Content::excerpt(Markdown::convert($result['text']),60);
-            $targetTitle = $result['title'];
-            $targetUrl = $result['permalink'];
-        }else if ($url !=""){
+        }else if (empty($cid) && $url !=""){
             $targetUrl = $url;
             $targetSummary = @$attrs['intro'];
             $targetTitle = @$attrs['title'];
             $targetImgSrc = $cover;
         }else{
-            return "";
+            $targetTitle = "文章不存在，请检查文章CID";
+        }
+
+        $imageHtml = "";
+        $noImageCss = "";
+        if (trim($targetImgSrc) != ""){
+            $imageHtml = '<div class="inner-image bg" style="background-image: url('.$targetImgSrc.');background-size: cover;"></div>
+';
+        }else{
+            $noImageCss = 'style="margin-left: 10px;"';
         }
 
         return <<<EOF
 <div class="preview">
    <div class="post-inser post">
-    <a href="{$targetUrl}" class="post_inser_a ">
-    <div class="inner-image bg" style="background-image: url({$targetImgSrc});background-size: cover;"></div>
-    <div class="inner-content">
+    <a href="{$targetUrl}" target="_blank" class="post_inser_a ">
+    {$imageHtml}
+    <div class="inner-content" $noImageCss>
      <p class="inser-title">{$targetTitle}</p>
      <div class="inster-summary">
       {$targetSummary}
      </div>
-     <a href="{$targetUrl}" target="_blank">{$targetUrl}</a>
     </div>
     </a>
     <!-- .inner-content #####-->
@@ -1249,25 +1418,88 @@ EOF;
     }
 
 
-
     /**
      * 解析时光机页面的评论内容
      * @param $content
-     * @return mixed
+     * @return string
      */
     public static function timeMachineCommentContent($content){
-        //时光机中播放器功能
+        return Content::parseContentPublic($content);
+    }
 
+
+    /**
+     * 一些公用的解析，文章、评论、时光机公用的，与用户状态无关
+     * @param $content
+     * @return null|string|string[]
+     */
+    public static function parseContentPublic($content){
+        $options = mget();
+        //文章中折叠框功能
+        if (strpos($content, '[collapse') != false){
+            $pattern = self::get_shortcode_regex(array('collapse'));
+            $content = preg_replace_callback("/$pattern/",array('Content','collapseParseCallback'),
+                $content);
+        }
+
+        //文章中播放器功能
         if ( strpos( $content, '[hplayer')!== false) {//提高效率，避免每篇文章都要解析
             $pattern = self::get_shortcode_regex(array('hplayer'));
-            $content = preg_replace_callback("/$pattern/",array('Content','musicParseCallback'), $content);
+            $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','musicParseCallback'), $content);
         }
 
-        //时光机中视频播放器功能
+        //文章中视频播放器功能
         if ( strpos( $content, '[vplayer')!== false) {//提高效率，避免每篇文章都要解析
             $pattern = self::get_shortcode_regex(array('vplayer'));
-            $content = preg_replace_callback("/$pattern/",array('Content','videoParseCallback'), $content);
+            $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','videoParseCallback'), $content);
         }
+
+        //解析文章中的表情短代码
+        $emotionPathPrefix = THEME_URL.'usr/img/emotion';
+        $content = Utils::handle_preg_replace('/::([^:\s]*?):([^:\s]*?)::/sm','<img src="'.$emotionPathPrefix.'/$1/$2.png" class="emotion-$1">',$content);
+
+        //调用其他文章页面的摘要
+        if ( strpos( $content, '[post')!== false) {//提高效率，避免每篇文章都要解析
+            $pattern = self::get_shortcode_regex(array('post'));
+            $content = preg_replace_callback("/$pattern/",array('Content','quoteOtherPostCallback'), $content);
+        }
+
+        //解析短代码功能
+        if ( strpos( $content, '[scode')!== false) {//提高效率，避免每篇文章都要解析
+            $pattern = self::get_shortcode_regex(array('scode'));
+            $content = preg_replace_callback("/$pattern/",array('Content','scodeParseCallback'),
+                $content);
+        }
+
+        //解析文章内图集
+        if (strpos($content,'[album')!== false){
+            $pattern = self::get_shortcode_regex(array('album'));
+            $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','scodeAlbumParseCallback'),
+                $content);
+        }
+
+        //解析markdown扩展语法
+        if ($options->markdownExtend != "" && in_array('scode',$options->markdownExtend)){
+            $content = Utils::handle_preg_replace_callback("/(@|√|!|x|i)&gt;\s(((?!<\/p>).)*)(<br \/>|<\/p>)/is",array('Content','sCodeMarkdownParseCallback'), $content);
+        }
+
+        //解析拼音注解写法
+        if ($options->markdownExtend != "" && in_array('pinyin',$options->markdownExtend)){
+            $content = Utils::handle_preg_replace('/\{\{\s*([^\:]+?)\s*\:\s*([^}]+?)\s*\}\}/is',
+                "<ruby>$1<rp> (</rp><rt>$2</rt><rp>) </rp></ruby>", $content);
+        }
+
+
+        //解析显示按钮短代码
+        if ( strpos( $content, '[button')!== false) {//提高效率，避免每篇文章都要解析
+            $pattern = self::get_shortcode_regex(array('button'));
+            $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','parseButtonCallback'), $content);
+        }
+
+        //文章中的链接，以新链接方式打开
+        $content = preg_replace("/<a href=\"([^\"]*)\">/i", "<a href=\"\\1\" target=\"_blank\">", $content);
+
+
         return $content;
     }
 
@@ -1279,14 +1511,10 @@ EOF;
      * @param $rememberEmail
      * @param $currentEmail
      * @param $parentEmail
+     * @param bool $isTime
      * @return mixed
      */
-    public static function postCommentContent($content, $isLogin, $rememberEmail, $currentEmail, $parentEmail){
-        //解析表情
-        $emotionPathPrefix = THEME_URL.'usr/img/emotion';
-        $content = Utils::handle_preg_replace('/::([^:\s]*?):([^:\s]*?)::/sm','<img src="'.$emotionPathPrefix.'/$1/$2.png" class="emotion-$1">',$content);
-        //评论中的链接，以新链接方式打开
-        $content = preg_replace("/<a href=\"([^\"]*)\">/i", "<a href=\"\\1\" target=\"_blank\">", $content);
+    public static function postCommentContent($content, $isLogin, $rememberEmail, $currentEmail, $parentEmail,$isTime = false){
         //解析私密评论
         $flag = true;
         if ( strpos( $content, '[secret]')!== false) {//提高效率，避免每篇文章都要解析
@@ -1294,16 +1522,19 @@ EOF;
             $content = preg_replace_callback("/$pattern/",array('Content','secretContentParseCallback'), $content);
             if ($isLogin || ($currentEmail == $rememberEmail && $currentEmail != "") || ($parentEmail == $rememberEmail && $rememberEmail != "")){
                 $flag = true;
-//                echo "父评论邮箱".$parentEmail."|"."当前评论邮箱".$currentEmail."|"."记录的邮箱".$rememberEmail;
             }else{
-//                echo "父评论邮箱".$parentEmail."|"."当前评论邮箱".$currentEmail."|"."记录的邮箱".$rememberEmail;
                 $flag = false;
             }
         }
         if ($flag){
+            $content = Content::parseContentPublic($content);
             return $content;
         }else{
-            return '<div class="hideContent">该评论仅登录用户及评论双方可见</div>';
+            if ($isTime){
+                return '<div class="hideContent">此条为私密说说，仅发布者可见</div>';
+            }else{
+                return '<div class="hideContent">该评论仅登录用户及评论双方可见</div>';
+            }
         }
     }
 
@@ -1313,13 +1544,22 @@ EOF;
      *
      * @param $obj
      * @param $status
+     * @return string
      */
     public static function postContent($obj,$status){
-        $options = mget();
         $content = $obj->content;
+        $options = mget();
         $isImagePost = self::isImageCategory($obj->categories);
-
-
+        if (!$isImagePost && trim($obj->fields->outdatedNotice) == "yes" && $obj->is('post')){
+            date_default_timezone_set("Asia/Shanghai");
+            $created = round((time()- $obj->created) / 3600 / 24);
+            $updated = round((time()- $obj->modified) / 3600 / 24);
+            if ($updated >= 60 && $created > 180){
+                echo '
+<div class="tip share">'.sprintf(_mt("请注意，本文编写于 %d 天前，最后修改于 %d 天前，其中某些信息可能已经过时。"),$created,$updated).'</div>
+';
+            }
+        }
         //镜像处理文章中的图片
         if($options->cdn_add!="") {
             $cdnArray = explode("|",$options->cdn_add);
@@ -1330,7 +1570,7 @@ EOF;
                 $width = 300;//图片的缩略图大小
             }
             $suffix = Utils::getImageAddOn($options,true,trim($cdnArray[1]),$width,0);//图片云处理后缀
-            $content = preg_replace('/(<img\s.*src=")' . $localUrl . '(.*?)"(.*?>)/', '$1' . $cdnUrl
+            $content = preg_replace('/(<img\s[^>]*?src=")' . $localUrl . '([^>]*?)"([^>]*?>)/', '$1' . $cdnUrl
                 . '$2' .$suffix. '"$3', $content);
         }
 
@@ -1345,7 +1585,7 @@ EOF;
         }
 
         if ($isImagePost){//照片文章
-            self::postImagePost($content,$obj);
+            $content = self::postImagePost($content,$obj);
         }else{//普通文章
             if ($obj->hidden == true && trim($obj->fields->lock)!=""){//加密文章且没有访问权限
                 echo '<p class="text-muted protected"><i class="glyphicon glyphicon-eye-open"></i>&nbsp;&nbsp;'._mt("密码提示").'：'.$obj->fields->lock.'</p>';
@@ -1359,40 +1599,11 @@ EOF;
                 ->limit(1);
             $result = $db->fetchAll($sql);//查看评论中是否有该游客的信息
 
-            //文章中部分内容隐藏功能
+            //文章中部分内容隐藏功能（回复后可见）
             if($status || $result) {
                 $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm",'<div class="hideContent">$1</div>',$content);
             }else{
                 $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm",'<div class="hideContent">'._mt("此处内容需要评论回复后（审核通过）方可阅读。").'</div>',$content);
-            }
-
-            //文章中折叠框功能
-            if (strpos($content, '[collapse') != false){
-                $pattern = self::get_shortcode_regex(array('collapse'));
-                $content = preg_replace_callback("/$pattern/",array('Content','collapseParseCallback'),
-                    $content);
-            }
-
-            //文章中播放器功能
-            if ( strpos( $content, '[hplayer')!== false) {//提高效率，避免每篇文章都要解析
-                $pattern = self::get_shortcode_regex(array('hplayer'));
-                $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','musicParseCallback'), $content);
-            }
-
-            //文章中视频播放器功能
-            if ( strpos( $content, '[vplayer')!== false) {//提高效率，避免每篇文章都要解析
-                $pattern = self::get_shortcode_regex(array('vplayer'));
-                $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','videoParseCallback'), $content);
-            }
-
-            //解析文章中的表情短代码
-            $emotionPathPrefix = THEME_URL.'usr/img/emotion';
-            $content = Utils::handle_preg_replace('/::([^:\s]*?):([^:\s]*?)::/sm','<img src="'.$emotionPathPrefix.'/$1/$2.png" class="emotion-$1">',$content);
-
-            //调用其他文章页面的摘要
-            if ( strpos( $content, '[post')!== false) {//提高效率，避免每篇文章都要解析
-                $pattern = self::get_shortcode_regex(array('post'));
-                $content = preg_replace_callback("/$pattern/",array('Content','quoteOtherPostCallback'), $content);
             }
 
             //仅登录用户可查看的内容
@@ -1411,82 +1622,63 @@ EOF;
                     }
                 }, $content);
             }
-
-            //markdown转HTML
-            //$content = Markdown::convert($content);
-
-            //解析短代码功能
-            if ( strpos( $content, '[scode')!== false) {//提高效率，避免每篇文章都要解析
-                $pattern = self::get_shortcode_regex(array('scode'));
-                $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','scodeParseCallback'),
-                    $content);
-            }
-
-            //解析markdown扩展语法
-
-            if ($options->markdownExtend != "" && in_array('scode',$options->markdownExtend)){
-                $content = Utils::handle_preg_replace_callback("/(@|√|!|x|i)&gt;\s(((?!<\/p>).)*)(<br \/>|<\/p>)/is",array('Content','sCodeMarkdownParseCallback'), $content);
-            }
-
-            //解析拼音注解写法
-            if ($options->markdownExtend != "" && in_array('pinyin',$options->markdownExtend)){
-                $content = Utils::handle_preg_replace('/\{\{\s*([^\:]+?)\s*\:\s*([^}]+?)\s*\}\}/is',
-                    "<ruby>$1<rp> (</rp><rt>$2</rt><rp>) </rp></ruby>", $content);
-            }
-
-
-            //解析显示按钮短代码
-            if ( strpos( $content, '[button')!== false) {//提高效率，避免每篇文章都要解析
-                $pattern = self::get_shortcode_regex(array('button'));
-                $content = Utils::handle_preg_replace_callback("/$pattern/",array('Content','parseButtonCallback'), $content);
-            }
-
-
-
-            //文章中的链接，以新链接方式打开
-            $content = preg_replace("/<a href=\"([^\"]*)\">/i", "<a href=\"\\1\" target=\"_blank\">", $content);
-
-            echo trim($content);
-
+            $content = Content::parseContentPublic($content);
         }
-
+        return trim($content);
     }
 
-    public static function parsePlayer($content){
 
-        $pattern = self::get_shortcode_regex(array('hplayer'));
-        return preg_replace_callback("/$pattern/",array('Content','musicParseCallback'), $content);
+    /**
+     * 解析文章内容为图片列表（相册）
+     * @param $content
+     * @return string
+     */
+    public static function parseContentToImage($content){
+        preg_match_all('/<img.*?src="(.*?)"(.*?)(alt="(.*?)")??(.*?)\/?>/',$content,$matches);
+        $html = "";
+        $html.= "<div class='photos'>";
+        if (is_array($matches)){
+//            print_r($matches);
+            if (count($matches[0]) == 0){
+                $html.= '<small class="text-muted letterspacing indexWords">相册无图片</small>';
+            }else{
+                for ($i = 0;$i<count($matches[0]);$i++){
+                    $info = trim($matches[5][$i]);
+                    preg_match('/alt="(.*?)"/',$info,$info);
+                    if (is_array($info) && count($info) >=2){
+//                        print_r($info);
+                        $info = @$info[1];
+                    }else{
+                        $info = "";
+                    }
+                    $html.= <<<EOF
+<figure class="image-thumb" itemprop="associatedMedia" itemscope="" itemtype="http://schema.org/ImageObject">
+          {$matches[0][$i]}
+          <figcaption itemprop="caption description">{$info}</figcaption>
+      </figure>
+EOF;
+                }
+            }
+        }
+        $html.= "</div>";
+
+        return $html;
     }
 
 
     /**
      * @param $content
      * @param $obj
+     * @return string
      */
     public static function postImagePost($content,$obj){
         if ($obj->hidden === true){//输入密码访问
-            echo $content;
+            return $content;
         }else{
-            preg_match_all('/<img.*?src="(.*?)"(.*?)alt="(.*?)"(.*?)\/?>/',$content,$matches);
-            echo "<div class='photos'>";
-            if (is_array($matches)){
-                if (count($matches[0]) == 0){
-                    echo '<small class="text-muted letterspacing indexWords">相册无图片</small>';
-                }else{
-                    for ($i = 0;$i<count($matches[0]);$i++){
-                        echo <<<EOF
-<figure class="image-thumb" itemprop="associatedMedia" itemscope="" itemtype="http://schema.org/ImageObject">
-          {$matches[0][$i]}
-          <figcaption itemprop="caption description">{$matches[3][$i]}</figcaption>
-      </figure>
-EOF;
-                    }
-                }
-            }else{//
-            }
-            echo "</div>";
+            return Content::parseContentToImage($content);
         }
     }
+
 
     /**
      * 获取匹配短代码的正则表达式
@@ -1743,7 +1935,7 @@ var registCommentEvent = function() {
      * @param Widget_Archive $archive
      * @return string
      */
-    public static function exportGeneratorRules(Widget_Archive $archive){
+    public static function exportGeneratorRules($archive){
         $rules = array(
             "commentReply",
         );
@@ -1765,35 +1957,35 @@ var registCommentEvent = function() {
         $html = "";
         switch ($options->themetype){
             case 0:
-                $html .= '<div class="navbar-header bg-black">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-black">';break;
             case 1:
-                $html .= '<div class="navbar-header bg-dark">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-dark">';break;
             case 2:
-                $html .= '<div class="navbar-header bg-white-only">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-white-only">';break;
             case 3:
-                $html .= '<div class="navbar-header bg-primary">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-primary">';break;
             case 4:
-                $html .= '<div class="navbar-header bg-info">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-info">';break;
             case 5:
-                $html .= '<div class="navbar-header bg-success">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-success">';break;
             case 6:
-                $html .= '<div class="navbar-header bg-danger">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-danger">';break;
             case 7:
-                $html .= '<div class="navbar-header bg-black">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-black">';break;
             case 8:
-                $html .= '<div class="navbar-header bg-dark">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-dark">';break;
             case 9:
-                $html .= '<div class="navbar-header bg-info dker">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-info dker">';break;
             case 10:
-                $html .= '<div class="navbar-header bg-primary">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-primary">';break;
             case 11:
-                $html .= '<div class="navbar-header bg-info dker">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-info dker">';break;
             case 12:
-                $html .= '<div class="navbar-header bg-success">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-success">';break;
             case 13:
-                $html .= '<div class="navbar-header bg-danger">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-danger">';break;
             default:
-                $html .= '<div class="navbar-header bg-danger">';break;
+                $html .= '<div class="text-ellipsis navbar-header bg-danger">';break;
         }
         return $html;
     }
@@ -1847,9 +2039,23 @@ var registCommentEvent = function() {
      * @param $okButtonId
      * @param $title
      * @param $label
+     * @param String $type 类型，img,music video 决定是否有上传按钮
      * @return string
      */
-    public static function returnCrossInsertModelHtml($modelId,$okButtonId,$title,$label){
+    public static function returnCrossInsertModelHtml($modelId,$okButtonId,$title,$label,$type){
+
+        $uploadHtml = "";
+        if($type == "img"){
+            $uploadHtml =<<<EOF
+<label class="insert_tips m-t-sm">本地上传</label>
+     <input type="file" id="time_file" multiple name="file" class="hide">
+<div class="bootstrap-filestyle input-group"><input type="text" id="file-info" class="form-control" value="未选择任何文件" 
+disabled=""> <span 
+class="group-span-filestyle input-group-btn" tabindex="0"><label for="filestyle-0" class="btn btn-primary" id="time-upload">选择文件</label></span></div>
+EOF;
+
+        }
+
         return '
  <div class="modal fade" id="'.$modelId.'" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
                                 <div class="modal-dialog modal-sm" role="document">
@@ -1864,6 +2070,8 @@ var registCommentEvent = function() {
                                                     <div class="form-group">
                                                         <label class="insert_tips">'._mt("$label").'</label>
                                                         <input name="'.$modelId.'" type="text" class="form-control" >
+                                                        '.$uploadHtml.'
+                                                        
                                                     </div>
                                                 </div>
 
@@ -2117,14 +2325,16 @@ EOF;
                 <a href="' . $val['permalink'] . '" class="pull-left thumb-sm m-r">'.self::returnRightSideImageHtml($isShowImage,$hot,$index).'</a>
                 <div class="clear">
                     <h4 class="h5 l-h"> <a href="' . $val['permalink'] . '" title="' . $val['title'] . '"> ' . $val['title'] . ' </a></h4>
-                    <small class="text-muted post-head-icon">
-                    <span class="meta-views"> <i class="iconfont icon-comments-o" aria-hidden="true"></i> <span class="sr-only">评论数：</span> <span class="meta-value">'.$val['commentsNum'].'</span>
+                    <small class="text-muted post-head-icon">';
+            if ($options->hotPostOrderType != "views"){
+             echo '<span class="meta-views"> <i class="iconfont icon-comments-o" aria-hidden="true"></i> <span class="sr-only">评论数：</span> <span class="meta-value">'.$val['commentsNum'].'</span>
+                    </span>';
+            }else{
+              echo '<span class="meta-date"> <i class="fontello fontello-eye" aria-hidden="true"></i> <span class="sr-only">浏览次数:</span> <span class="meta-value">'.$val['views'].'</span>
                     </span>
-                    <span class="meta-date m-l-sm"> <i class="fontello fontello-eye" aria-hidden="true"></i> <span class="sr-only">浏览次数:</span> <span class="meta-value">'.$val['views'].'</span>
-                    </span>
-                    </small>
-                    </div>
-            </li>';
+              ';
+            }
+            echo '</small></div></li>';
             $index ++;
         }
     }
@@ -2162,14 +2372,16 @@ EOF;
                 <a href="' . $val['permalink'] . '" class="pull-left thumb-sm m-r">'.self::returnRightSideImageHtml($isShowImage,$random,$index).'</a>
                 <div class="clear">
                     <h4 class="h5 l-h"> <a href="' . $val['permalink'] . '" title="' . $val['title'] . '"> ' . $val['title'] . ' </a></h4>
-                    <small class="text-muted post-head-icon">
-                    <span class="meta-views"> <i class="iconfont icon-comments-o" aria-hidden="true"></i> <span class="sr-only">评论数：</span> <span class="meta-value">'.$val['commentsNum'].'</span>
+                    <small class="text-muted post-head-icon">';
+            if ($options->hotPostOrderType != "views"){
+                echo '<span class="meta-views"> <i class="iconfont icon-comments-o" aria-hidden="true"></i> <span class="sr-only">评论数：</span> <span class="meta-value">'.$val['commentsNum'].'</span>
+                    </span>';
+            }else{
+                echo '<span class="meta-date"> <i class="fontello fontello-eye" aria-hidden="true"></i> <span class="sr-only">浏览次数:</span> <span class="meta-value">'.$val['views'].'</span>
                     </span>
-                    <span class="meta-date m-l-sm"> <i class="fontello fontello-eye" aria-hidden="true"></i> <span class="sr-only">浏览次数:</span> <span class="meta-value">'.$val['views'].'</span>
-                    </span>
-                    </small>
-                    </div>
-            </li>';
+              ';
+            }
+            echo '</small></div></li>';
             $index ++;
         }
     }
@@ -2198,9 +2410,9 @@ EOF;
     public static function returnPageAnimateClass($obj){
         $options = mget();
         if (in_array('isPageAnimate',$options->featuresetup) && ($obj->is('post') || $obj->is('page'))){
-            echo "animated ng-enter";
+            echo "animated fadeIn";
         }else if (in_array('isOtherAnimate',$options->featuresetup) && !$obj->is('post') && !$obj->is('page')){
-            echo "animated ng-enter";
+            echo "animated fadeIn";
         }else{
             echo "";
         }
@@ -2233,16 +2445,12 @@ EOF;
                 //print_r($children);
                 //var_dump(empty($children));
                 if (!empty($children)){//子分类不为空
-                    $html .= '<li><a class="auto"><span class="pull-right text-muted">
+                    $html .= '<li><a class="auto" href="'.$categories->permalink.'"><span class="pull-right text-muted">
                     <i class="fontello icon-fw fontello-angle-right text"></i>
                     <i class="fontello icon-fw fontello-angle-down text-active"></i>
                   </span><span>'.$categories->name.'</span></a>';
                     //循环输出子分类
                     $childCategoryHtml = '<ul class="nav nav-sub dk child-nav">';
-                    //有子分类判断是否输出父分类
-                    if (!in_array('noShowParentCategory',$options->featuresetup)){
-                        $childCategoryHtml .= '<li><a href="'.$categories->permalink.'"><b class="badge pull-right">'.$categories->count.'</b><span>'.$categories->name.'</span></a></li>';
-                    }
                     foreach ($children as $mid){
                         $child = $categories->getCategory($mid);
                         $childCategoryHtml .= '<li><a href="'.$child['permalink'].'"><b class="badge pull-right">'.$child['count'].'</b><span>'.$child['name'].'</span></a></li>';
@@ -2279,6 +2487,40 @@ EOF;
         return $html;
     }
 
+    public static function returnTimeTab($id,$name,$url,$type,$img){
+        return <<<EOF
+<li ><a href="#$id" role="tab" data-id="$id" data-toggle="tab" aria-expanded="false" 
+data-rss="$url" data-status="false" data-type="$type" data-img="$img">$name</a></li>
+EOF;
+    }
+
+
+    public static function returnTimeTabPane($id){
+        return <<<EOF
+<div id="$id" class="padder fade tab-pane">
+                        <nav class="loading-nav text-center m-t-lg m-b-lg">
+                            <p class="infinite-scroll-request"><i class="animate-spin fontello fontello-refresh"></i>Loading...</p>
+                        </nav>
+                        <nav class="error-nav hide text-center m-t-lg m-b-lg">
+                            <p class="infinite-scroll-request"><i class="glyphicon 
+                            glyphicon-refresh"></i>加载失败！尝试重新加载</p>
+                        </nav>
+                        <div class="streamline b-l b-info m-l-lg m-b padder-v hide">
+                            <ol class="comment-list">
+                            </ol>
+                        </div>
+                    </div>
+EOF;
+    }
+
+    public static function pageFooter($options){
+        if ($options->adContentPage != ""){
+            $options->adContentPage();
+        }
+        if (!empty($options->featuresetup) && in_array('payforauthorinpage', $options->featuresetup)){
+            echo Content::exportPayForAuthors();
+        }
+    }
 }
 
 

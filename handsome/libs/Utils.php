@@ -472,11 +472,12 @@ class Utils {
         return $lazyLoadHtml. ' style="background-image: url('.$imageSrc.')"';
     }
 
-    public static function returnImageLazyLoadHtml($originalSrc,$width,$height){
+    public static function returnImageLazyLoadHtml($base64 = false,$originalSrc,$width,$height){
         $options = mget();
         $placeholder = Utils::choosePlaceholder($options);
-
-        $originalSrc .= self::getImageAddOn($options,$originalSrc,null,$width,$height);
+        if (!$base64){
+            $originalSrc .= self::getImageAddOn($options,$originalSrc,null,$width,$height);
+        }
 
         if (in_array('lazyload',$options->featuresetup)){
             $imageSrc = $placeholder;
@@ -502,7 +503,7 @@ class Utils {
         try{
             $basedir = dirname(dirname(__FILE__))."/usr/img/sj";
             $arr = scandir($basedir);
-            $image = count(preg_grep("/\.jpg$/", $arr));
+            $image = count(preg_grep("/^\d+\.jpg$/", $arr));
             return $image;
         }catch (Exception $e){
             print_r($e);
@@ -518,7 +519,7 @@ class Utils {
         try{
             $basedir = dirname(dirname(__FILE__))."/usr/img/sj2";
             $arr = scandir($basedir);
-            $image = count(preg_grep("/\.jpg$/", $arr));
+            $image = count(preg_grep("/^\d+\.jpg$/", $arr));
             return $image;
         }catch (Exception $e){
             print_r($e);
@@ -592,6 +593,93 @@ class Utils {
 
     public static function getWordsOfContentPost($content){
         return mb_strlen(trim($content));
+    }
+
+    /**
+     * @param $blogUrl
+     * @param $name
+     * @param $pic
+     * @param $type string,表示$pic内容是网络地址，local表示$pic内容是本地图片
+     * @param string $suffix 图片后缀
+     * @return string
+     */
+    public static function uploadPic($blogUrl, $name, $pic,$type,$suffix){
+        $DIRECTORY_SEPARATOR = "/";
+        $childDir = $DIRECTORY_SEPARATOR.'usr'.$DIRECTORY_SEPARATOR.'uploads' . $DIRECTORY_SEPARATOR .'time' .$DIRECTORY_SEPARATOR;
+        $dir = __TYPECHO_ROOT_DIR__ . $childDir;
+        if (!file_exists($dir)){
+            mkdir($dir, 0777, true);
+        }
+        $fileName = $name. $suffix;
+        $file = $dir .$fileName;
+        //TODO:支持图片压缩
+        if ($type == "web"){
+            //开始捕捉
+            $img = self::getDataFromWebUrl($pic);
+        }else{
+            $img = $pic;//本地图片直接就是二进制数据
+        }
+        $fp2 = fopen($file , "a");
+        fwrite($fp2, $img);
+        fclose($fp2);
+
+        return $blogUrl.$childDir.$fileName;
+    }
+
+    public function returnBlogUrl(){
+
+    }
+
+    public static  function getDataFromWebUrl($url){
+        $file_contents = "";
+        if (function_exists('file_get_contents')) {
+            $file_contents = @file_get_contents($url);
+        }
+        if ($file_contents == "") {
+            $ch = curl_init();
+            $timeout = 30;
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+            $file_contents = curl_exec($ch);
+            curl_close($ch);
+        }
+        return $file_contents;
+    }
+
+    public static function isPluginAvailable($className,$dirName){
+        if (class_exists($className)) {
+            $plugins = Typecho_Plugin::export();
+            $plugins = $plugins['activated'];
+            if (is_array($plugins) && array_key_exists($dirName, $plugins)) {
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            return false;
+        }
+
+    }
+
+    public static function isNotice2(){
+        $DIRECTORY_SEPARATOR = "/";
+        $childDir = $DIRECTORY_SEPARATOR.'usr'.$DIRECTORY_SEPARATOR.'themes' . $DIRECTORY_SEPARATOR .'handsome'
+            .$DIRECTORY_SEPARATOR;
+        $dir = __TYPECHO_ROOT_DIR__ . $childDir;
+        $path = $dir."license";
+        //检查license文件
+        if (file_exists($path)){
+            return false;
+        }else{
+            $body = file_get_contents($path);
+            echo $body ;//输入文件内容
+            if ($body == md5(Handsome_Config::AUTH)){
+                return true;
+            }else{
+                return false;
+            }
+        }
     }
 
 }

@@ -23,7 +23,7 @@ $this->need('component/header.php');
                     <button type="button" class="close" data-dismiss="alert">×</button><p><i class="fontello fontello-volume-up" aria-hidden="true"></i>&nbsp;
                         <?php $this->options->blogNotice(); ?></p>
                 </div>
-                <!--/公告位置-->
+                <!--/详细介绍-->
             <?php endif; ?>
             <header class="bg-light lter b-b wrapper-md">
                 <h1 class="m-n font-thin h3 text-black l-h"><?php $this->archiveTitle(array(
@@ -38,11 +38,15 @@ $this->need('component/header.php');
                     <?php
                     $index = 0;
                     while ($this->next()){
-                        $cover =  Content::returnHeaderImgSrc($this,"index",$index);
+                        if ($this->hidden == 1){
+                            $cover = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIj48ZyBvcGFjaXR5PSIuOCIgZmlsbD0iI0ZGRiI+PHBhdGggZD0iTTEyMSAwQzUzLjktLjYtLjYgNTMuOSAwIDEyMWMuNiA2NS4yIDUzLjggMTE4LjQgMTE5IDExOSA2Ny4xLjYgMTIxLjYtNTMuOSAxMjEtMTIxQzIzOS40IDUzLjggMTg2LjIuNiAxMjEgMHpNOTAuNSA1OWMuMy0uOSAxLTEuNSAyLjItMS4yIDIuMi41IDE5LjkgNC4zIDE5LjkgNC4zczM2LjgtNS42IDM4LjEtNS45YzEuMS0uMiAxLjkuNCAyLjEgMS40LjEuNCA2LjMgMjEuMyAxMS43IDM5LjVINzguM0M4My45IDc5LjYgOTAuMSA2MCA5MC41IDU5em04NS45IDEwMy4zYy0uOCAxMi4yLTEwLjcgMjIuMS0yMi45IDIyLjktMTQuMy45LTI2LjEtMTAuNC0yNi4xLTI0LjUgMC0uNyAwLTEuNC4xLTIuMS0yLS43LTQuMi0xLTYuNC0xLTIuMyAwLTQuNS40LTYuNyAxLjEuMS43LjEgMS4zLjEgMiAwIDE0LjEtMTEuOCAyNS40LTI2LjEgMjQuNS0xMi4yLS44LTIyLjEtMTAuNy0yMi45LTIyLjktLjgtMTQuMiAxMC41LTI2LjEgMjQuNS0yNi4xIDEwLjIgMCAxOSA2LjMgMjIuNyAxNS4yIDIuNy0uOCA1LjUtMS4zIDguNC0xLjMgMi44IDAgNS41LjQgOC4xIDEuMiAzLjctOC45IDEyLjQtMTUuMSAyMi43LTE1LjEgMTQuMSAwIDI1LjQgMTEuOSAyNC41IDI2LjF6bTIzLjQtMzQuM0g0Mi40Yy0uMiAwLS4zLS4zLS4xLS40IDUuMi0yLjcgMzUuNC0xNy42IDc5LTE3LjYgNDMuNyAwIDczLjUgMTQuOCA3OC42IDE3LjYuMi4xLjEuNC0uMS40eiIvPjxjaXJjbGUgY3g9IjE1MS45IiBjeT0iMTYwLjgiIHI9IjE3LjQiLz48Y2lyY2xlIGN4PSI5MC4xIiBjeT0iMTYwLjgiIHI9IjE3LjQiLz48L2c+PC9zdmc+";
+                        }else{
+                            $cover =  Content::returnHeaderImgSrc($this,"index",$index,true);
+                        }
                         $title = $this->title;
                         $url = $this->permalink;
                         $isLock = "";
-                        $imgHtml = Utils::returnImageLazyLoadHtml($cover,300,300);
+                        $imgHtml = Utils::returnImageLazyLoadHtml(true,$cover,300,300);
                         if ($this->hidden == 1){
                             $isLock = " image-lock";
                         }

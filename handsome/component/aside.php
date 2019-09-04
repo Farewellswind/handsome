@@ -12,8 +12,8 @@
   <!--选择侧边栏的颜色-->
   <?php echo Content::selectAsideStyle(); ?>
   <!--<aside>-->
-      <div class="aside-wrap">
-        <div class="navi-wrap">
+      <div class="aside-wrap" layout="column">
+        <div class="navi-wrap scroll-y" flex>
           <!-- user -->
           <div class="clearfix hidden-xs text-center hide  <?php if (!empty($this->options->indexsetup) && !in_array('show-avatar', $this->options->indexsetup)) echo "show"; ?>" id="aside-user">
             <div class="dropdown wrapper">
@@ -38,8 +38,8 @@
                 </span>
               </a>
               <!-- dropdown -->
-              <ul class="dropdown-menu animated fadeInRight w hidden-folded">
-                <li class="wrapper b-b m-b-sm bg-info m-t-n-xs">
+              <ul class="dropdown-menu animated fadeInRight w hidden-folded no-padder">
+                <li class="wrapper b-b m-b-sm bg-info m-n">
                   <span class="arrow top hidden-folded arrow-info"></span>
                   <div>
                 <?php
@@ -59,33 +59,9 @@
                     <div class="progress-bar bg-white" data-toggle="tooltip" data-original-title="<?php _me("时间已经度过"); echo $percent; ?>" style="width: <?php echo $percent; ?>"></div>
                   </div>
                 </li>
-              <!--文章RSS订阅-->
-              <li>
-                <a href="<?php $this->options->feedUrl(); ?>" data-toggle="tooltip" title="<?php _me("订阅文章 Feed 源") ?>">
-                  <i style="position: relative;width: 30px;margin: -11px -10px;margin-right: 0px;overflow: hidden;line-height: 30px;text-align: center;" class="fontello fontello-rss" ></i><span><?php _me("文章RSS") ?></span>
-                </a>
-              </li>
-              <!--评论RSS订阅-->
-              <li>
-                <a href="<?php $this->options->commentsFeedUrl(); ?>" data-toggle="tooltip" title="<?php _me("订阅评论 Feed 源") ?>"><i style="position: relative;width: 30px;margin: -11px -10px;margin-right: 0px;overflow: hidden;line-height: 30px;text-align: center;" class="fontello fontello-rss-square" ></i><span><?php _me('评论RSS') ?></span></a>
-              </li>
-              <li class="divider"></li>
-              <?php if($this->user->hasLogin()): ?>
-              <!--后台管理-->
-              <li>
-                <a target="_blank" href="<?php $this->options->adminUrl(); ?>"><i style="position: relative;width: 30px;margin: -11px -10px;margin-right: 0px;overflow: hidden;line-height: 30px;text-align: center;" class="fontello fontello-cogs"></i><span><?php _me("后台管理") ?></span></a>
-              </li>
-              <?php else: ?>
-                  <?php if (!@in_array('hideLogin',$this->options->featuresetup)): ?>
-              <li>
-                <a href="<?php $this->options->loginUrl(); ?>"><?php _me("登录") ?></a>
-              </li>
-                  <?php endif; ?>
-              <?php endif; ?>
               </ul>
               <!-- / dropdown -->
             </div>
-            <div class="line dk hidden-folded"></div>
           </div>
           <!-- / user -->
 
@@ -93,7 +69,8 @@
           <nav ui-nav class="navi clearfix">
             <ul class="nav">
              <!--index-->
-              <li class="hidden-folded padder m-t m-b-sm text-muted text-xs">
+                <div class="line dk hidden-folded"></div>
+                <li class="hidden-folded padder m-t m-b-sm text-muted text-xs">
                 <span><?php _me("导航") ?></span>
               </li>
               <?php
@@ -139,7 +116,13 @@
                 <span><?php _me("组成") ?></span>
               </li>
               <!--分类category-->
-              <li>
+                <?php
+                $class = "";
+                    if (in_array("openCategory",$this->options->featuresetup)){
+                        $class = "class=\"active\"";
+                    }
+                    ?>
+              <li <?php echo $class; ?>>
                 <a class="auto">
                   <span class="pull-right text-muted">
                     <i class="fontello icon-fw fontello-angle-right text"></i>
@@ -150,7 +133,7 @@
                 </a>
                 <ul class="nav nav-sub dk">
                   <li class="nav-sub-header">
-                    <a data-no-instant>
+                    <a>
                       <span><?php _me("分类") ?></span>
                     </a>
                   </li>
@@ -201,7 +184,8 @@
                     </a>
                   </li>
                   <!--使用links插件，输出全站友链-->
-                 <?php $mypattern1 = "<li><a href=\"{url}\" target=\"_blank\" title=\"{title}\"><span>{name}</span></a></li>";
+                 <?php $mypattern1 = "<li data-original-title=\"{title}\" data-toggle=\"tooltip\" 
+data-placement=\"top\"><a href=\"{url}\" target=\"_blank\"><span>{name}</span></a></li>";
                   Links_Plugin::output($mypattern1, 0, "ten");?>
                 </ul>
               </li>
@@ -209,7 +193,40 @@
             </ul>
           </nav>
           <!-- nav -->
-        </div><!--.navi-wrap-->
+        </div>
+          <!--end of .navi-wrap-->
+          <!--left_footer-->
+          <?php if (@!in_array('notShowleftBottomMenu',$this->options->indexsetup)): ?>
+          <div id="left_footer" class="footer wrapper-xs text-center nav-xs lt">
+                  <?php if (@in_array('hideLogin',$this->options->featuresetup)){
+                      $class = "col-xs-6";
+                  }else{
+                      $class = "col-xs-4";
+                  }; ?>
+
+                  <?php if (!@in_array('hideLogin',$this->options->featuresetup)): ?>
+                      <div class="<?php echo $class; ?> no-padder">
+                          <a target="_blank" class="tinav" href="<?php $this->options->adminUrl(); ?>" title="" data-toggle="tooltip" data-placement="top" data-original-title="后台管理">
+                              <span class="block"><i class="fontello fontello-cogs"></i></span>
+                              <small class="text-muted"><?php _me("管理") ?></small>
+                          </a>
+                      </div>
+                  <?php endif; ?>
+                  <div class="<?php echo $class; ?> no-padder">
+                      <a target="_blank" class="tinav" href="<?php $this->options->feedUrl(); ?>" title="" data-toggle="tooltip" data-placement="top" data-original-title="文章RSS地址">
+                          <span class="block"><i class="fontello fontello-rss"></i></span>
+                          <small class="text-muted"><?php _me("文章") ?></small>
+                      </a>
+                  </div>
+                  <div class="<?php echo $class; ?> no-padder">
+                      <a target="_blank" href="<?php $this->options->commentsFeedUrl(); ?>" title="" data-toggle="tooltip" data-placement="top" data-original-title="评论RSS地址">
+                          <span class="block"><i class="fontello fontello-rss-square"></i></span>
+                          <small class="text-muted"><?php _me("评论") ?></small>
+                      </a>
+                  </div>
+          </div>
+          <?php endif; ?>
+
       </div><!--.aside-wrap-->
   </aside>
 <!-- content -->

@@ -49,6 +49,15 @@ if ($_SERVER["REQUEST_METHOD"] == "GET"){
 
 }
 
+/**
+ * 从分享文字中解析出链接
+ * @param $text
+ * @return string
+ */
+function parseMusicShareText($text){
+
+    return "";
+}
 
 /**
  * @param $url

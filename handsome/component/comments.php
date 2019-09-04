@@ -5,6 +5,11 @@
             textarea#comment{
                 background-image: url('<?php echo $this->options->commentBackground; ?>');
                 background-color: #fafdff;
+                transition: 0.5s;
+            }
+            textarea#comment:focus {
+                background-position-y: 115px;
+                transition: 0.4s;
             }
         </style>
     <?php endif; ?>
@@ -56,7 +61,7 @@
         ?>">
             <div id="div-<?php $comments->theId(); ?>" class="comment-body">
 
-                <a class="pull-left thumb-sm">
+                <a class="pull-left thumb-sm" rel="nofollow">
                     <?php echo Utils::avatarHtml($comments); ?>
                 </a>
                 <div class="m-b m-l-xxl">
@@ -105,6 +110,14 @@
             <div id="<?php $this->respondId(); ?>" class="respond comment-respond">
 
                 <h4 id="reply-title" class="comment-reply-title m-t-lg m-b"><?php _me("发表评论") ?>
+                    <small><i class="glyphicon glyphicon-info-sign" data-toggle="tooltip" title="<?php
+                        $tip = $this->options->commentTips;
+                        if (trim($tip) == ""){
+                            $tip = _mt("使用cookie技术保留您的个人信息以便您下次快速评论，继续评论表示您已同意该条款");
+                        }
+                        echo $tip;
+                        ?>"></i>
+                    </small>
                     <small class="cancel-comment-reply">
                         <?php $comments->cancelReply(_mt('取消回复')); ?>
                     </small>

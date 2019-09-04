@@ -33,8 +33,8 @@ class Links_Action extends Typecho_Widget implements Widget_Interface_Do
 		/** 取出数据 */
 		$link = array(
 			'name' => "Hanny's Blog",
-			'url' => "http://www.imhan.com", 
-			'description' => "寒泥 - Typecho插件开发者", 
+			'url' => "http://www.imhan.com",
+			'description' => "寒泥 - Typecho插件开发者",
 		);
 		$link['order'] = $this->db->fetchObject($this->db->select(array('MAX(order)' => 'maxOrder'))->from($this->prefix.'links'))->maxOrder + 1;
 
@@ -89,7 +89,7 @@ class Links_Action extends Typecho_Widget implements Widget_Interface_Do
         /** 提示信息 */
         $this->widget('Widget_Notice')->set($deleteCount > 0 ? _t('链接已经删除') : _t('没有链接被删除'), NULL,
         $deleteCount > 0 ? 'success' : 'notice');
-        
+
         /** 转向原页 */
         $this->response->redirect(Typecho_Common::url('extending.php?panel=Links%2Fmanage-links.php', $this->options->adminUrl));
     }

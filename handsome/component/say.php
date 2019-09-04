@@ -1,5 +1,11 @@
 <?php
+$GLOBALS['isLogin'] = $this->user->hasLogin();
+
+$GLOBALS['max_read_id'] = Typecho_Cookie::get('user_read_id');
 function threadedComments($comments, $options) {
+    if ($comments->coid > $GLOBALS['max_read_id']){
+        $GLOBALS['max_read_id'] = $comments->coid;
+    }
     $commentClass = '';
     if ($comments->authorId) {
         if ($comments->authorId == $comments->ownerId) {
@@ -28,16 +34,19 @@ function threadedComments($comments, $options) {
             <?php echo Utils::avatarHtml($comments); ?>
         </a>
 
-        <div class="m-l-lg m-b-lg">
-            <div class="m-b-xs">
+        <div class="time-machine m-l-lg panel b-a">
+            <div class="panel-heading pos-rlt b-b b-light">
+                <span class="arrow left"></span>
                 <?php $comments->author(); ?>
-                <span class="format_time text-muted m-l-sm pull-right" datetime="<?php $comments->date('c'); ?>"><?php echo Utils::formatDate($comments,$comments->created, $options->dateFormat); ?></span>
+                <span class="text-muted m-l-sm pull-right" datetime="<?php $comments->date('c'); ?>"><?php echo Utils::formatDate($comments,$comments->created, $options->dateFormat); ?>
+                </span>
             </div>
-            <div class="m-b">
-                <div class="m-b words_contents">
-                    <?php echo Content::timeMachineCommentContent($comments->content); ?>
-                </div>
-                <div class="m-t-sm say_footer">
+            <div class="panel-body">
+                <?php  echo Content::postCommentContent(Content::timeMachineCommentContent($comments->content),$GLOBALS['isLogin'] ,"","","",true); ?>
+            </div>
+            <div class="panel-footer">
+                <div class="say_footer">
+<!--                评论，可能会写，但是没想好样式    <a href="" class="text-muted m-xs"><i class="iconfont icon-redo"></i></a>-->
                     <a data-coid="<?php echo $comments->coid; ?>" class="text-muted star_talk"><i class="glyphicon <?php
                         $stars = Typecho_Cookie::get('extend_say_stars');
                         if(empty($stars)){
@@ -52,23 +61,29 @@ function threadedComments($comments, $options) {
                             echo 'glyphicon-heart';
                         }
                         ?>"></i>&nbsp;<span class="star_count"><?php
-                        $db = Typecho_Db::get();
-                        $prefix = $db->getPrefix();
-                        $coid = $comments->coid;
-                        if (!array_key_exists('stars', $db->fetchRow($db->select()->from('table.comments')))){
-                            echo "0";
-                            $db->query('ALTER TABLE `' . $prefix . 'comments` ADD `stars` INT(10) DEFAULT 0;');
-                        }else{
-                            $row = $db->fetchRow($db->select('stars')->from('table.comments')->where('coid = ?',$coid));
-                            echo $row['stars'];
-                        }
+                            $db = Typecho_Db::get();
+                            $prefix = $db->getPrefix();
+                            $coid = $comments->coid;
+                            if (!array_key_exists('stars', $db->fetchRow($db->select()->from('table.comments')))){
+                                echo "0";
+                                $db->query('ALTER TABLE `' . $prefix . 'comments` ADD `stars` INT(10) DEFAULT 0;');
+                            }else{
+                                $row = $db->fetchRow($db->select('stars')->from('table.comments')->where('coid = ?',$coid));
+                                echo $row['stars'];
+                            }
                             ?></span></a>
                     <span class="text-muted">
-                        <i class="glyphicon glyphicon-record  m-l-sm"></i>&nbsp;<?php  ($comments->agent == "weChat") ? _me("发自微信") : _me("发自网页端");?></span>
+                        <?php
+                        $ua = new UA($comments->agent);
+                        ?>
+                        <i class="<?php echo $ua->returnTimeUa()['icon']; ?>  m-l-sm"></i>&nbsp;
+                        <?php
+                        echo "发自".$ua->returnTimeUa()['title'];
+                        ?>
+                    </span>
                 </div>
             </div>
         </div>
-
         <!-- 单条评论者信息及内容 -->
     </div><!--匹配`自定义评论的代码结构`下面的div标签-->
 <?php } ?>
@@ -83,7 +98,15 @@ function threadedComments($comments, $options) {
                 <div class="panel panel-default m-t-md pos-rlt m-b-lg">
                     <form id="comment_form" action="<?php $this->commentUrl() ?>" method="post" class="comment-form" role="form">
                         <textarea id="comment" class="textarea form-control no-border" name="text" rows="3" maxlength="65525" aria-required="true"><?php $this->remember('text'); ?></textarea>
-
+                        <div class="secret_comment" id="secret_comment">
+                            <label class="secret_comment_label control-label">私密</label>
+                            <div class="secret_comment_check">
+                                <label class="i-switch i-switch-sm bg-dark m-b-ss m-r">
+                                    <input type="checkbox" id="secret_comment_checkbox">
+                                    <i></i>
+                                </label>
+                            </div>
+                        </div>
                         <!--提交按钮-->
                         <div class="panel-footer bg-light lter">
                             <button type="submit" name="submit" id="submit" class="submit btn btn-info pull-right btn-sm">
@@ -99,9 +122,9 @@ function threadedComments($comments, $options) {
                             </ul>
                             <!--模态框-->
                             <?php
-                            echo Content::returnCrossInsertModelHtml("imageInsertModal","imageInsertOk","插入图片","请在下方的输入框内输入要插入的远程图片地址");
-                            echo Content::returnCrossInsertModelHtml("videoInsertModal","videoInsertOk","插入视频","请在下方的输入框内输入要插入的远程视频地址");
-                            echo Content::returnCrossInsertModelHtml("musicInsertModal","musicInsertOk","插入音乐","请在下方的输入框内输入要插入的单曲地址或者远程音乐地址");
+                            echo Content::returnCrossInsertModelHtml("imageInsertModal","imageInsertOk","插入图片","请在下方的输入框内输入要插入的远程图片地址","img");
+                            echo Content::returnCrossInsertModelHtml("videoInsertModal","videoInsertOk","插入视频","请在下方的输入框内输入要插入的远程视频地址","video");
+                            echo Content::returnCrossInsertModelHtml("musicInsertModal","musicInsertOk","插入音乐","请在下方的输入框内输入要插入的单曲地址或者远程音乐地址","music");
                             ?>
 
                         </div>
@@ -114,12 +137,20 @@ function threadedComments($comments, $options) {
     <?php else: ?>
         <h4><?php _me("此处评论已关闭") ?></h4>
     <?php endif; ?>
-    <?php $this->comments()->to($comments); ?>
+    <?php $this->comments()->to($comments);
+    ?>
     <?php if ($comments->have()): ?>
-        <div class="streamline b-l b-info m-l-lg m-b padder-v">
+        <div class="streamline b-l m-l-lg m-b padder-v">
 
             <h4 style="display: none" class="comments-title m-t-lg m-b">&nbsp;<?php $this->commentsNum(_mt('暂无评论'), _mt('1 条评论'), _mt(' %d 条评论')); ?></h4>
-            <?php $comments->listComments(); ?>
+            <?php $comments->listComments();
+            if ($GLOBALS['max_read_id']>Typecho_Cookie::get('latest_time_id')){//防止阅读ID错误，越界
+                $GLOBALS['max_read_id'] = Typecho_Cookie::get('latest_time_id');
+            }
+            if ($GLOBALS['max_read_id'] > Typecho_Cookie::get('user_read_id')){//新的阅读ID大于之前的Id,再去修改这个值
+                Typecho_Cookie::set('user_read_id', $GLOBALS['max_read_id']);
+            }
+            ?>
         </div>
         <nav class="text-center m-b-lg" role="navigation">
             <?php $comments->pageNav('<i class="fontello fontello-chevron-left"></i>', '<i class="fontello fontello-chevron-right"></i>'); ?>
@@ -154,7 +185,9 @@ function threadedComments($comments, $options) {
 
 <script>
 
+    //更新未读提醒
 
+    //点赞操作
     $('.star_talk').click(function () {
         var ele = $(this);
         $.get(LocalConst.BLOG_URL,{action:"star_talk", coid:$(this).data('coid')})

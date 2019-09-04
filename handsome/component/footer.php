@@ -3,11 +3,11 @@
 </div><!-- /content -->
   <footer id="footer" class="app-footer" role="footer">
     <div class="wrapper b-t bg-light">
-      <span class="pull-right hidden-xs">
+      <span class="pull-right hidden-xs text-ellipsis">
       <?php $this->options->BottomInfo(); ?>
       Powered by <a target="blank" href="http://www.typecho.org">Typecho</a>&nbsp;|&nbsp;Theme by <a target="blank" href="https://www.ihewro.com/archives/489/">handsome</a>
       </span>
-      &copy;&nbsp;<?php echo date("Y");?> Copyright&nbsp;<?php $this->options->BottomleftInfo(); ?>
+        <span class="text-ellipsis">&copy;&nbsp;<?php echo date("Y");?> Copyright&nbsp;<?php $this->options->BottomleftInfo(); ?></span>
     </div>
       <!--可以去除主题版权信息，最好保留版权信息或者添加主题信息到友链，谢谢你的理解-->
       <?php if (@in_array('showSettingsButton',$this->options->featuresetup)): ?>
@@ -60,6 +60,12 @@
           </div>
           </div>
       </script>
+      <?php else: ?>
+      <style>
+          .topButton>.btn{
+              top: 0;
+          }
+          </style>
       <?php endif; ?>
 
       <div class="topButton panel panel-default">
@@ -108,6 +114,7 @@
             IS_PAJX_COMMENT: '<?php echo PJAX_COMMENT_ENABLED; ?>',
             BASE_SCRIPT_URL: '<?php echo THEME_URL; ?>',
             BLOG_URL: '<?php echo BLOG_URL; ?>',
+            BLOG_URL_PHP: '<?php echo BLOG_URL_PHP ?>',
             THEME_COLOR: '<?php $this->options->themetype(); ?>',
             THEME_HEADER_FIX: '<?php echo in_array('header-fix', $this->options->indexsetup) ? true : false; ?>',
             THEME_ASIDE_FIX: '<?php echo in_array('aside-fix', $this->options->indexsetup) ? true : false; ?>',
@@ -149,7 +156,7 @@
 
 <!--CDN加载-->
 <?php $PUBLIC_CDN_ARRAY = unserialize(PUBLIC_CDN); ?>
-<script src="<?php echo $PUBLIC_CDN_ARRAY['js']['bootstrap'] ?>"></script>
+<script src="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['js']['bootstrap'] ?>"></script>
 
 
 <?php if (PJAX_ENABLED): ?>
@@ -177,12 +184,13 @@
 
         }).on('pjax:complete', function() {
             window['Page'].doPJAXCompleteAction();
-
-
+            if ($(".post-position").length > 0){
+                window['Page'].doPJAXCompletePostAction();
+            }
             <?php if (@in_array('lazyload',$this->options->featuresetup)): ?>
                 <?php if (in_array('isPageAnimate',$this->options->featuresetup)): ?>
-                $('.app-content-body').animateCss('fadeInUpBig', function() {
-                    $("img").lazyload({
+                $('.app-content-body').animateCss('fadeIn', function() {
+                    $("#post-content img").lazyload({
                         effect: "fadeIn",
                         threshold: "200"
                     });
@@ -193,7 +201,7 @@
                     });
                 });
                 <?php else: ?>
-                $("img").lazyload({
+                $("#post-content img").lazyload({
                     effect: "fadeIn",
                     threshold: "200"
                 });
@@ -224,7 +232,7 @@
 
 <?php if (!empty($this->options->featuresetup) && in_array('smoothscroll', $this->options->featuresetup)): ?>
     <!--平滑滚动组件-->
-    <script src="<?php echo STATIC_PATH ?>js/features/SmoothScroll.js"></script>
+    <script src="<?php echo STATIC_PATH ?>js/features/SmoothScroll.min.js"></script>
 <?php endif; ?>
 
 <!--pjax动画组件-->
@@ -273,13 +281,35 @@
             effect: "fadeIn",
             threshold: "200"
         });
+
+        //后退的时候
+        if (window.history && window.history.pushState) {
+            $(window).on('popstate', function () {
+                /// 当点击浏览器的 后退和前进按钮 时才会被触发，
+                window.history.pushState('forward', null, '');
+                window.history.forward(1);//当前页 ,
+                $("img").lazyload({
+                    effect: "fadeIn",
+                    threshold: "200"
+                });
+
+                $(".lazy").lazyload({
+                    effect: "fadeIn",
+                    threshold: "200"
+                });
+            });
+        }
+        //在ie中必须有这两行
+        window.history.pushState('forward', null, '');
+        window.history.forward(1);
     </script>
 <?php endif; ?>
 
 <?php if (@in_array('mathJax',$this->options->featuresetup)): ?>
     <!--maxJax公式组件-->
-    <script src="//cdn.bootcss.com/mathjax/2.7.0/MathJax.js" type="text/javascript"></script>
-    <script src="//cdn.bootcss.com/mathjax/2.7.0/config/TeX-AMS-MML_SVG.js" type="text/javascript"></script>
+    <?php $PUBLIC_CDN_ARRAY = unserialize(PUBLIC_CDN); ?>
+    <script src="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['js']['mathjax']?>" type="text/javascript"></script>
+    <script src="<?php echo PUBLIC_CDN_PREFIX.$PUBLIC_CDN_ARRAY['js']['mathjax_svg']?>" type="text/javascript"></script>
 <?php endif; ?>
 
 

@@ -31,8 +31,9 @@
          <div class="wrapper-lg">
           <?php getFriendWall(); ?>
           <div class="entry-content l-h-2x">
-              <?php Content::postContent($this,$this->user->hasLogin()); ?>
+              <?php echo Content::postContent($this,$this->user->hasLogin()); ?>
           </div>
+             <?php Content::pageFooter($this->options) ?>
          </div>
         </article>
        </div>
